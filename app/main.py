@@ -6,16 +6,15 @@ only ever shows Notifications (a separate page) plus the Account
 dropdown from app/theme.py — no per-role sidebar pages. Login persists
 across page refreshes via a URL-token-backed session (see app/auth.py).
 """
-"""
-WMS-Trak — Streamlit entry point.
-...
-"""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import streamlit as st
+
 from app.auth import verify_login, create_session, get_user_by_session
 from app.bond_engine import entries_nearing_expiry
+...
 from app.theme import render_sidebar, inject_global_css
 from app.entries import capture_entry, entries_captured_by, active_entries_for_port, get_entry_full_detail
 from app.action_requests import (
