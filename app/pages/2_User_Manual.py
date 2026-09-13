@@ -18,12 +18,13 @@ st.title("User Manual — How to Use WMS-Trak")
 
 st.markdown("## Navigation")
 st.write(
-    "The left sidebar always shows the same three things, no matter which "
+    "The left sidebar always shows the same things, no matter which "
     "role you're logged in as:"
 )
 st.markdown(
     "- **main** — your Dashboard, with role-specific tabs laid out horizontally\n"
     "- **About the Authors** — project information and the research group\n"
+    "- **Notifications** — system updates and chat-style messages\n"
     "- **User Manual** — this page\n"
     "- **Account dropdown** (bottom of sidebar) — your profile, phone number, and Log out"
 )
@@ -49,29 +50,40 @@ st.markdown("## Role-by-Role Guide")
 with st.expander("👮 Officer", expanded=(user["role_name"] == "Officer")):
     st.markdown(
         "- **Capture Entry**: record a new RIH or NOS entry. Fill in importer/owner "
-        "details, goods description, and (for NOS) seizure/legal details, or (for "
-        "vehicles) vehicle specifics. Assign it to a Warehouse (A–E) or, if it's a "
-        "vehicle, a Pound (A–E).\n"
+        "details, goods description, weight (with a kg/tonnes/litres/grams unit "
+        "dropdown), rent charge per day, the ZWG-to-USD exchange rate, an expiry "
+        "date if applicable, and (for NOS) seizure/legal details, or (for vehicles) "
+        "vehicle specifics. Assign it to a Warehouse (A–E) or, if it's a vehicle, a "
+        "Pound (A–E).\n"
         "- **My Captured Entries**: see everything you've personally captured, and "
         "view full detail on any of them.\n"
         "- **Warehouses & Pounds**: check occupancy at your station, mark a "
         "warehouse/pound Full or Not Full, and see what's currently stored in each.\n"
-        "- **Request Release / Disposal**: once duty/fines/rent are ready to be "
-        "settled (release) or a seizure needs disposing of (offhand sale, "
-        "appropriation, auction), submit a request here — it goes to your "
-        "Supervisor for review.\n"
-        "- **Finalize Payment**: once Manager gives final approval, come back here "
-        "to record the actual receipt number and amounts (duty, fines, rent) "
-        "collected.\n"
+        "- **Request Action**: choose one of four pathways for an active entry:\n"
+        "    - *Release to Owner* — goods released once duty/fines/rent are settled\n"
+        "    - *Forfeiture* — appropriation to the State; specify the requesting "
+        "Ministry and letter/document reference\n"
+        "    - *Destruction* — for expired, dangerous, perishable, or prohibited "
+        "goods; requires the approving Port Health officer and reason\n"
+        "    - *E-Auction* — sale via ZIMRA's online auction system\n\n"
+        "  Every request goes to your Supervisor for review.\n"
+        "- **Finalize Action**: once Manager gives final approval, this is where "
+        "the entry actually leaves active tracking. The form shown depends on the "
+        "action type: Release to Owner asks for duty paid, additional duty, and "
+        "rent paid (the system auto-calculates rent owed from your rent-per-day "
+        "rate × days in the warehouse); Forfeiture asks for the receiving "
+        "representative's details; Destruction asks for the date, place, and "
+        "stakeholders present; E-Auction asks for revenue collected and buyer "
+        "details. All require a receipt number where applicable.\n"
         "- **Released & Sold**: see everything that's left active tracking at your "
         "station, plus running revenue totals."
     )
 
 with st.expander("🧭 Supervisor", expanded=(user["role_name"] == "Supervisor")):
     st.markdown(
-        "- **Review Requests**: Officer-submitted release/disposal requests at your "
-        "station land here first. Approve to forward to the Manager, or reject with "
-        "a reason.\n"
+        "- **Review Requests**: Officer-submitted requests at your station land "
+        "here first, regardless of action type. Approve to forward to the "
+        "Manager, or reject with a reason.\n"
         "- **Warehouse Overview**: RIH list, Seizures list, and a monthly summary "
         "for your station — filterable by warehouse and date range.\n"
         "- **Released & Sold**: everything finalized at your station, with revenue "
@@ -80,10 +92,10 @@ with st.expander("🧭 Supervisor", expanded=(user["role_name"] == "Supervisor")
 
 with st.expander("✅ Manager", expanded=(user["role_name"] == "Manager")):
     st.markdown(
-        "- **Final Approvals**: requests already approved by a Supervisor land here, "
-        "from all ports. Approving here **effects** the action immediately — the "
-        "entry leaves active tracking (released/sold/auctioned/appropriated), but "
-        "the full record stays in the audit trail.\n"
+        "- **Final Approvals**: requests already approved by a Supervisor land "
+        "here, from all ports. Approving here grants **permission** — the entry "
+        "moves to 'awaiting finalization,' but stays in active tracking until the "
+        "Officer completes the finalization step.\n"
         "- **Warehouse Overview**: same as Supervisor's, but across all ports.\n"
         "- **Released & Sold**: system-wide revenue totals and finalized entries."
     )
@@ -121,12 +133,18 @@ st.divider()
 st.markdown("## The Release / Disposal Workflow, End to End")
 st.markdown(
     "1. **Officer** captures the RIH/NOS entry.\n"
-    "2. **Officer** requests **Release** (goods released once payment is settled) "
-    "or **Disposal** (offhand sale, appropriation, or auction).\n"
+    "2. **Officer** requests one of four actions: **Release to Owner**, "
+    "**Forfeiture**, **Destruction**, or **E-Auction** — with any type-specific "
+    "details required at request time (e.g. Ministry name for Forfeiture, Port "
+    "Health approval for Destruction).\n"
     "3. **Supervisor** reviews the request — approve to forward, or reject.\n"
-    "4. **Manager** gives final approval — this immediately effects the action.\n"
-    "5. **Officer** finalizes payment — records the receipt number and amounts "
-    "(duty, fines, rent) actually collected.\n"
+    "4. **Manager** gives final approval — this grants **permission**, but does "
+    "not yet remove the entry from active tracking.\n"
+    "5. **Officer** finalizes the action — records the type-specific closing "
+    "details (payment breakdown and auto-calculated rent for Release to Owner; "
+    "representative details for Forfeiture; destruction date/place/stakeholders "
+    "for Destruction; revenue and buyer details for E-Auction). **This step is "
+    "what actually effects the action** and removes the entry from active stock.\n"
     "6. The entry now appears in everyone's **Released & Sold** tab within their "
     "jurisdiction, contributing to revenue totals."
 )

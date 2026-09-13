@@ -57,6 +57,22 @@ st.info(
     "user feedback) once available."
 )
 
+st.markdown("### Recent Progress")
+st.write(
+    "The prototype is live and deployed for pilot use at ZWFB. Current "
+    "functionality includes: full RIH/NOS capture with importer, vehicle, "
+    "rent-per-day, exchange rate, expiry date, and weight-unit fields; "
+    "warehouse and vehicle-pound capacity tracking (Warehouses A–E, Pounds "
+    "A–E); role-based access (Officer, Supervisor, Manager, Admin); and four "
+    "distinct release/disposal pathways — Release to Owner, Forfeiture "
+    "(appropriation to the State), Destruction, and E-Auction — each "
+    "routed through an Officer → Supervisor → Manager approval chain, with "
+    "the Officer finalizing type-specific details (payment breakdown, "
+    "representative details, destruction record, or sale proceeds) once "
+    "Manager approval is granted. A full audit trail, chat-style messaging, "
+    "and persistent login sessions are also in place."
+)
+
 st.markdown("### Research Group — Graduate Trainees, 2026")
 st.table(
     [
