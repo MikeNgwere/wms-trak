@@ -33,7 +33,6 @@ from app.admin import (
     list_all_messages, revenue_stats, warehouse_usage_stats, days_until_expiry_report,
 )
 from app.db import fetch_all
-
 st.set_page_config(page_title="WMS-Trak", page_icon="🏛️", layout="wide")
 inject_global_css()
 
