@@ -2,8 +2,8 @@
 WMS-Trak — Streamlit entry point.
 
 Single dashboard page with horizontal, role-scoped tabs. The sidebar
-only ever shows Notifications (a separate page) plus the Account
-dropdown from app/theme.py — no per-role sidebar pages. Login persists
+only ever shows Notifications, About the Authors, User Manual (separate
+pages) plus the Account dropdown from app/theme.py. Login persists
 across page refreshes via a URL-token-backed session (see app/auth.py).
 """
 import sys
@@ -17,12 +17,15 @@ from app.bond_engine import entries_nearing_expiry
 from app.theme import render_sidebar, inject_global_css
 from app.entries import capture_entry, entries_captured_by, active_entries_for_port, get_entry_full_detail
 from app.action_requests import (
-    request_action, pending_supervisor_review, supervisor_review,
-    pending_manager_approval, manager_decide_and_effect,
+    request_release_to_owner, request_forfeiture, request_destruction, request_eauction,
+    pending_supervisor_review, supervisor_review,
+    pending_manager_approval, manager_decide,
+    pending_officer_finalization,
+    finalize_release_to_owner, finalize_forfeiture, finalize_destruction, finalize_eauction,
 )
 from app.warehouses import warehouses_for_port, toggle_full, goods_in_warehouse
 from app.warehouse_views import rih_list, seizures_list, seizures_ready_for_disposal, monthly_summary
-from app.revenue import pending_finalization, record_finalization, released_and_sold, revenue_summary
+from app.revenue import released_and_sold, revenue_summary
 from app.admin import (
     list_users, list_roles, list_ports, create_user, set_user_active,
     reset_password, delete_user, search_entries, correct_entry,
@@ -120,7 +123,6 @@ def officer_capture_tab(user):
     with st.form("capture_entry_form"):
         st.markdown(f"**{storage_label} Assignment**")
         storage_choice = st.selectbox(storage_label, list(storage_choices.keys())) if storage_choices else None
-        warehouse_registry_number = st.text_input("Warehouse Registry Number")
 
         st.markdown("**Entry Details**")
         col1, col2 = st.columns(2)
@@ -132,18 +134,30 @@ def officer_capture_tab(user):
             quantity_units = st.text_input("Quantity / Unit of Measure")
 
         goods_description = st.text_area("Exact Description of Goods")
-        col3, col4 = st.columns(2)
+
+        col3, col4, col5 = st.columns(3)
         with col3:
-            gross_weight = st.number_input("Gross Weight (kg)", min_value=0.0, step=0.1)
+            gross_weight = st.number_input("Gross Weight", min_value=0.0, step=0.1)
         with col4:
-            net_weight = st.number_input("Net Weight (kg)", min_value=0.0, step=0.1)
+            net_weight = st.number_input("Net Weight", min_value=0.0, step=0.1)
+        with col5:
+            weight_unit = st.selectbox("Weight Unit", ["kg", "tonnes", "litres", "grams"])
+
+        st.markdown("**Financial & Compliance Details**")
+        col6, col7, col8 = st.columns(3)
+        with col6:
+            rent_charge_per_day = st.number_input("Rent Charge per Day (USD)", min_value=0.0, step=0.01)
+        with col7:
+            exchange_rate_zwg_usd = st.number_input("Exchange Rate (ZWG to USD)", min_value=0.0, step=0.0001, format="%.4f")
+        with col8:
+            expiry_date = st.date_input("Expiry Date of Goods (if applicable)", value=None)
 
         st.markdown("**Importer / Owner Details**")
-        col5, col6 = st.columns(2)
-        with col5:
+        col9, col10 = st.columns(2)
+        with col9:
             importer_name = st.text_input("Full Name of Importer / Owner")
             importer_id_number = st.text_input("National ID / Passport Number")
-        with col6:
+        with col10:
             importer_contact = st.text_input("Contact (Phone / Email)")
             importer_bpn_tin = st.text_input("BPN / TIN (if applicable)")
         importer_address = st.text_area("Physical / Postal Address")
@@ -170,12 +184,12 @@ def officer_capture_tab(user):
         vehicle_fields = {}
         if is_vehicle:
             st.markdown("**Vehicle Specifics**")
-            col7, col8 = st.columns(2)
-            with col7:
+            col11, col12 = st.columns(2)
+            with col11:
                 vehicle_fields["registration_number"] = st.text_input("Registration Number")
                 vehicle_fields["chassis_number"] = st.text_input("Chassis Number / VIN")
                 vehicle_fields["engine_number"] = st.text_input("Engine Number")
-            with col8:
+            with col12:
                 vehicle_fields["make"] = st.text_input("Make")
                 vehicle_fields["model"] = st.text_input("Model")
                 vehicle_fields["colour"] = st.text_input("Colour")
@@ -200,7 +214,6 @@ def officer_capture_tab(user):
                 goods_description=goods_description,
                 declared_value=declared_value,
                 warehouse_id=storage_choices[storage_choice],
-                warehouse_registry_number=warehouse_registry_number,
                 importer_name=importer_name,
                 importer_address=importer_address,
                 importer_contact=importer_contact,
@@ -209,6 +222,10 @@ def officer_capture_tab(user):
                 quantity_units=quantity_units,
                 gross_weight=gross_weight or None,
                 net_weight=net_weight or None,
+                weight_unit=weight_unit,
+                rent_charge_per_day=rent_charge_per_day,
+                exchange_rate_zwg_usd=exchange_rate_zwg_usd or None,
+                expiry_date=expiry_date,
                 is_vehicle=is_vehicle,
                 rih_data=rih_fields if entry_type == "RIH" else None,
                 nos_data=nos_fields if entry_type == "NOS" else None,
@@ -260,58 +277,154 @@ def officer_warehouses_tab(user):
 
 
 def officer_action_tab(user):
-    st.subheader(f"Request release or disposal — {user['port_code']}")
+    st.subheader(f"Request an action — {user['port_code']}")
     active = active_entries_for_port(user["port_code"])
     if not active:
         st.info("No active entries at this port.")
-    else:
-        options = {f"{e['entry_number']} ({e['entry_type']}, status: {e['status']})": e["entry_id"] for e in active}
-        with st.form("action_request"):
-            choice = st.selectbox("Entry", list(options.keys()))
-            action_type = st.selectbox("Action", ["release", "disposal"])
-            disposal_method = None
-            if action_type == "disposal":
-                disposal_method = st.selectbox("Disposal Method", ["offhand_sale", "appropriation", "auction"])
-            notes = st.text_area("Notes (e.g. duty/fines/rent paid, or reason for disposal)")
-            submitted_action = st.form_submit_button("Submit Request", type="primary")
-        if submitted_action:
-            entry_id = options[choice]
-            request_action(entry_id, user["user_id"], action_type, disposal_method, notes)
-            st.success(f"{action_type.title()} request submitted to Supervisor for review.")
+        return
+
+    options = {f"{e['entry_number']} ({e['entry_type']}, status: {e['status']})": e["entry_id"] for e in active}
+    action_type = st.selectbox(
+        "Action Type",
+        ["release_to_owner", "forfeiture", "destruction", "e_auction"],
+        format_func=lambda x: x.replace("_", " ").title(),
+        key="req_action_type",
+    )
+
+    with st.form("action_request_form"):
+        choice = st.selectbox("Entry", list(options.keys()))
+        notes = st.text_area("Notes")
+
+        ministry_name = request_letter_reference = None
+        port_health_officer_name = port_health_approval_reference = reason_for_destruction = None
+
+        if action_type == "forfeiture":
+            st.markdown("**Forfeiture — Ministry Details**")
+            ministry_name = st.text_input("Ministry Requesting Appropriation")
+            request_letter_reference = st.text_area("Letter / Document Reference (attach details or reference number)")
+        elif action_type == "destruction":
+            st.markdown("**Destruction — Port Health Approval**")
+            port_health_officer_name = st.text_input("Approving Port Health Officer")
+            port_health_approval_reference = st.text_input("Port Health Approval Reference")
+            reason_for_destruction = st.text_area("Reason for Destruction (e.g. expired, dangerous, perishable, prohibited)")
+
+        req_submitted = st.form_submit_button("Submit Request", type="primary")
+
+    if req_submitted:
+        entry_id = options[choice]
+        if action_type == "release_to_owner":
+            request_release_to_owner(entry_id, user["user_id"], notes)
+        elif action_type == "forfeiture":
+            if not ministry_name:
+                st.error("Ministry name is required for forfeiture.")
+                return
+            request_forfeiture(entry_id, user["user_id"], ministry_name, request_letter_reference, notes)
+        elif action_type == "destruction":
+            if not port_health_officer_name or not reason_for_destruction:
+                st.error("Port Health officer and reason for destruction are required.")
+                return
+            request_destruction(entry_id, user["user_id"], port_health_officer_name,
+                                 port_health_approval_reference, reason_for_destruction, notes)
+        elif action_type == "e_auction":
+            request_eauction(entry_id, user["user_id"], notes)
+        st.success(f"{action_type.replace('_', ' ').title()} request submitted to Supervisor for review.")
 
 
 def officer_finalize_tab(user):
-    st.subheader(f"Finalize approved release / disposal — {user['port_code']}")
-    rows = pending_finalization(user["port_code"])
+    st.subheader(f"Finalize manager-approved actions — {user['port_code']}")
+    rows = pending_officer_finalization(user["port_code"])
     if not rows:
         st.info("Nothing awaiting finalization.")
-    else:
-        for r in rows:
-            with st.container(border=True):
-                action_label = r["action_type"].title()
-                if r["action_type"] == "disposal":
-                    action_label += f" ({r['disposal_method'].replace('_', ' ')})"
-                st.write(f"**{r['entry_number']}** ({r['entry_type']}) — {action_label}")
-                st.caption(f"{r['goods_description']} · Declared value: {r['declared_value']}")
-                with st.form(f"finalize_form_{r['request_id']}"):
-                    receipt_number = st.text_input("Receipt Number")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        duty_amount = st.number_input("Duty (USD)", min_value=0.0, step=0.01, key=f"duty_{r['request_id']}")
-                    with col2:
-                        penalty_amount = st.number_input("Fines/Penalty (USD)", min_value=0.0, step=0.01, key=f"pen_{r['request_id']}")
-                    with col3:
-                        rent_amount = st.number_input("Warehouse Rent (USD)", min_value=0.0, step=0.01, key=f"rent_{r['request_id']}")
-                    finalize_submitted = st.form_submit_button("Record Payment", type="primary")
-                if finalize_submitted:
+        return
+
+    for r in rows:
+        with st.container(border=True):
+            st.write(f"**{r['entry_number']}** ({r['entry_type']}) — {r['action_type'].replace('_', ' ').title()}")
+            st.caption(f"{r['goods_description']} · Declared value: {r['declared_value']}")
+
+            if r["action_type"] == "release_to_owner":
+                with st.form(f"finalize_release_{r['request_id']}"):
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        duty_paid = st.number_input("Duty Paid (USD)", min_value=0.0, step=0.01, key=f"duty_{r['request_id']}")
+                    with c2:
+                        additional_duty = st.number_input("Additional Duty (USD)", min_value=0.0, step=0.01, key=f"adduty_{r['request_id']}")
+                    with c3:
+                        rent_paid = st.number_input("Rent Paid (USD)", min_value=0.0, step=0.01, key=f"rentpaid_{r['request_id']}")
+                    st.caption(f"System rent rate: {r['rent_charge_per_day']} USD/day — actual rent will be auto-calculated from days in warehouse.")
+                    receipt_number = st.text_input("Receipt Number", key=f"receipt_{r['request_id']}")
+                    y_number = st.text_input("Y Number", key=f"ynum_{r['request_id']}")
+                    clearance_details = st.text_area("Further Clearance Details", key=f"clear_{r['request_id']}")
+                    submit = st.form_submit_button("Save Final Release", type="primary")
+                if submit:
                     if not receipt_number:
                         st.error("Receipt number is required.")
                     else:
-                        record_finalization(
-                            r["request_id"], user["user_id"], receipt_number,
-                            duty_amount, penalty_amount, rent_amount,
+                        rent_calc = finalize_release_to_owner(
+                            r["request_id"], user["user_id"], duty_paid, additional_duty,
+                            rent_paid, receipt_number, y_number, clearance_details,
                         )
-                        st.success("Payment recorded.")
+                        st.success(f"Release finalized. System-calculated rent: {rent_calc:.2f} USD.")
+                        st.rerun()
+
+            elif r["action_type"] == "forfeiture":
+                td = r.get("type_detail") or {}
+                st.caption(f"Ministry: {td.get('ministry_name')} · Reference: {td.get('request_letter_reference')}")
+                with st.form(f"finalize_forfeit_{r['request_id']}"):
+                    representative_name = st.text_input("Representative Name", key=f"repname_{r['request_id']}")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        representative_id_number = st.text_input("Representative ID Number", key=f"repid_{r['request_id']}")
+                    with c2:
+                        representative_occupation = st.text_input("Representative Occupation", key=f"repocc_{r['request_id']}")
+                    goods_or_vehicle_finalization_details = st.text_area("Goods / Vehicle Final Details", key=f"gvdet_{r['request_id']}")
+                    submit = st.form_submit_button("Save Final Appropriation", type="primary")
+                if submit:
+                    if not representative_name:
+                        st.error("Representative name is required.")
+                    else:
+                        finalize_forfeiture(
+                            r["request_id"], user["user_id"], representative_name,
+                            representative_id_number, representative_occupation,
+                            goods_or_vehicle_finalization_details,
+                        )
+                        st.success("Appropriation finalized.")
+                        st.rerun()
+
+            elif r["action_type"] == "destruction":
+                td = r.get("type_detail") or {}
+                st.caption(f"Port Health: {td.get('port_health_officer_name')} · Reason: {td.get('reason_for_destruction')}")
+                with st.form(f"finalize_destroy_{r['request_id']}"):
+                    destruction_date = st.date_input("Date of Destruction", key=f"ddate_{r['request_id']}")
+                    destruction_place = st.text_input("Place of Destruction", key=f"dplace_{r['request_id']}")
+                    stakeholders_present = st.text_area(
+                        "Stakeholders Present (e.g. Police rep, Port Health rep, Army rep, other officers)",
+                        key=f"dstake_{r['request_id']}",
+                    )
+                    submit = st.form_submit_button("Save Destruction Record", type="primary")
+                if submit:
+                    if not destruction_place:
+                        st.error("Place of destruction is required.")
+                    else:
+                        finalize_destruction(
+                            r["request_id"], user["user_id"], destruction_date,
+                            destruction_place, stakeholders_present,
+                        )
+                        st.success("Destruction finalized.")
+                        st.rerun()
+
+            elif r["action_type"] == "e_auction":
+                with st.form(f"finalize_auction_{r['request_id']}"):
+                    revenue_collected = st.number_input("Revenue Collected (USD)", min_value=0.0, step=0.01, key=f"rev_{r['request_id']}")
+                    buyer_details = st.text_area("Buyer Details", key=f"buyer_{r['request_id']}")
+                    receipt_number = st.text_input("Receipt Number", key=f"areceipt_{r['request_id']}")
+                    submit = st.form_submit_button("Save Sale", type="primary")
+                if submit:
+                    if not receipt_number:
+                        st.error("Receipt number is required.")
+                    else:
+                        finalize_eauction(r["request_id"], user["user_id"], revenue_collected, buyer_details, receipt_number)
+                        st.success("E-Auction sale finalized.")
                         st.rerun()
 
 
@@ -337,17 +450,14 @@ def released_sold_tab(user):
 # ==================== SUPERVISOR TABS ====================
 
 def supervisor_review_tab(user):
-    st.subheader(f"Release / disposal requests pending review — {user['port_code']}")
+    st.subheader(f"Requests pending review — {user['port_code']}")
     rows = pending_supervisor_review(user["port_code"])
     if not rows:
         st.info("No requests awaiting review.")
     else:
         for r in rows:
             with st.container(border=True):
-                action_label = r["action_type"].title()
-                if r["action_type"] == "disposal":
-                    action_label += f" ({r['disposal_method'].replace('_', ' ')})"
-                st.write(f"**{r['entry_number']}** ({r['entry_type']}) — {action_label}")
+                st.write(f"**{r['entry_number']}** ({r['entry_type']}) — {r['action_type'].replace('_', ' ').title()}")
                 st.caption(f"{r['goods_description']} · Value: {r['declared_value']}")
                 st.caption(f"Officer notes: {r['request_notes']}")
                 notes = st.text_input("Supervisor notes", key=f"supnotes_{r['request_id']}")
@@ -365,29 +475,26 @@ def supervisor_review_tab(user):
 # ==================== MANAGER TABS ====================
 
 def manager_approvals_tab(user):
-    st.subheader("Release / disposal requests pending final approval (all ports)")
+    st.subheader("Requests pending final approval (all ports)")
     rows = pending_manager_approval()
     if not rows:
         st.info("No requests awaiting your approval.")
     else:
         for r in rows:
             with st.container(border=True):
-                action_label = r["action_type"].title()
-                if r["action_type"] == "disposal":
-                    action_label += f" ({r['disposal_method'].replace('_', ' ')})"
-                st.write(f"**{r['entry_number']}** ({r['entry_type']}) — {r['port_code']} — {action_label}")
+                st.write(f"**{r['entry_number']}** ({r['entry_type']}) — {r['port_code']} — {r['action_type'].replace('_', ' ').title()}")
                 st.caption(f"{r['goods_description']} · Value: {r['declared_value']}")
                 st.caption(f"Officer notes: {r['request_notes']} · Supervisor notes: {r['supervisor_notes']}")
                 notes = st.text_input("Manager notes", key=f"mgrnotes_{r['request_id']}")
                 c1, c2 = st.columns(2)
                 with c1:
-                    if st.button("Approve & Effect", key=f"mgrappr_{r['request_id']}", type="primary"):
-                        manager_decide_and_effect(r["request_id"], user["user_id"], approve=True, notes=notes)
-                        st.success(f"{action_label} effected.")
+                    if st.button("Approve", key=f"mgrappr_{r['request_id']}", type="primary"):
+                        manager_decide(r["request_id"], user["user_id"], approve=True, notes=notes)
+                        st.success("Approved — Officer may now proceed and finalize the details.")
                         st.rerun()
                 with c2:
                     if st.button("Reject", key=f"mgrrej_{r['request_id']}"):
-                        manager_decide_and_effect(r["request_id"], user["user_id"], approve=False, notes=notes)
+                        manager_decide(r["request_id"], user["user_id"], approve=False, notes=notes)
                         st.rerun()
 
 
@@ -603,7 +710,7 @@ def role_dashboard():
     if user["role_name"] == "Officer":
         tabs = st.tabs([
             "Capture Entry", "My Captured Entries", "Warehouses & Pounds",
-            "Request Release / Disposal", "Finalize Payment", "Released & Sold",
+            "Request Action", "Finalize Action", "Released & Sold",
         ])
         with tabs[0]:
             officer_capture_tab(user)

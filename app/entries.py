@@ -1,8 +1,8 @@
 """
 Entry capture: Officer records RIH and NOS entries directly into the
 system, including full document fields (importer/owner details,
-RIH/NOS-specific fields, optional vehicle details) and warehouse/pound
-assignment.
+RIH/NOS-specific fields, optional vehicle details), warehouse/pound
+assignment, rent-per-day, exchange rate, expiry date, and weight unit.
 """
 from datetime import datetime
 
@@ -19,7 +19,6 @@ def capture_entry(
     goods_description: str,
     declared_value: float,
     warehouse_id: int | None = None,
-    warehouse_registry_number: str | None = None,
     importer_name: str | None = None,
     importer_address: str | None = None,
     importer_contact: str | None = None,
@@ -28,6 +27,10 @@ def capture_entry(
     quantity_units: str | None = None,
     gross_weight: float | None = None,
     net_weight: float | None = None,
+    weight_unit: str = "kg",
+    rent_charge_per_day: float = 0,
+    exchange_rate_zwg_usd: float | None = None,
+    expiry_date=None,
     is_vehicle: bool = False,
     rih_data: dict | None = None,
     nos_data: dict | None = None,
@@ -49,18 +52,20 @@ def capture_entry(
         INSERT INTO entries (
             entry_number, entry_type, port_code, warehouse_id,
             goods_description, declared_value, date_entered, bond_due_date,
-            status, captured_by, warehouse_registry_number,
+            status, captured_by,
             importer_name, importer_address, importer_contact,
             importer_id_number, importer_bpn_tin,
-            quantity_units, gross_weight, net_weight, is_vehicle
+            quantity_units, gross_weight, net_weight, weight_unit,
+            rent_charge_per_day, exchange_rate_zwg_usd, expiry_date, is_vehicle
         )
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'in_warehouse',%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'in_warehouse',%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         RETURNING entry_id
         """,
         (entry_number, entry_type, port_code, warehouse_id,
          goods_description, declared_value, date_entered, due_date, officer_id,
-         warehouse_registry_number, importer_name, importer_address, importer_contact,
-         importer_id_number, importer_bpn_tin, quantity_units, gross_weight, net_weight, is_vehicle),
+         importer_name, importer_address, importer_contact,
+         importer_id_number, importer_bpn_tin, quantity_units, gross_weight, net_weight, weight_unit,
+         rent_charge_per_day, exchange_rate_zwg_usd, expiry_date, is_vehicle),
     )
     entry_id = row["entry_id"]
 
@@ -141,7 +146,8 @@ def entries_captured_by(officer_id: int):
     return fetch_all(
         """
         SELECT entry_id, entry_number, entry_type, goods_description,
-               declared_value, date_entered, bond_due_date, status, warehouse_id
+               declared_value, date_entered, bond_due_date, status, warehouse_id,
+               expiry_date, rent_charge_per_day
         FROM entries WHERE captured_by = %s ORDER BY date_entered DESC
         """,
         (officer_id,),
@@ -149,12 +155,13 @@ def entries_captured_by(officer_id: int):
 
 
 def active_entries_for_port(port_code: str | None = None):
-    """RIH/NOS entries still in active tracking (not yet released/disposed)."""
+    """RIH/NOS entries still in active tracking (not released/sold/destroyed/appropriated)."""
     query = """
         SELECT entry_id, entry_number, entry_type, goods_description,
-               declared_value, date_entered, bond_due_date, status, warehouse_id
+               declared_value, date_entered, bond_due_date, status, warehouse_id,
+               expiry_date, rent_charge_per_day
         FROM entries
-        WHERE status NOT IN ('released', 'sold', 'auctioned', 'appropriated')
+        WHERE status NOT IN ('released', 'sold', 'destroyed', 'appropriated')
     """
     params = ()
     if port_code:
