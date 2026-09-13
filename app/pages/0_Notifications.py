@@ -3,6 +3,9 @@ Notifications tab: automated system updates (acquittal-style events,
 flags, approvals) plus a chat-style Messages feed for human-composed
 communications — announcements, updates, general ZIMRA communication.
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import streamlit as st
 
 from app.notifications import get_notifications_for, mark_read

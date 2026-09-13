@@ -1,6 +1,9 @@
 """
 User Manual — how to navigate and use WMS-Trak, organised by role.
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import streamlit as st
 
 from app.theme import render_sidebar, inject_global_css

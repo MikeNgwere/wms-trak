@@ -3,6 +3,9 @@ Pilot-test Questionnaire: 15 Likert-scale (1-5) items grouped under
 3 research questions. One response per person — resubmitting updates
 your existing answers rather than creating a duplicate.
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import streamlit as st
 
 from app.theme import render_sidebar, inject_global_css

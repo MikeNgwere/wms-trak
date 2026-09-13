@@ -2,6 +2,9 @@
 About the Authors — project information and group member details,
 for easy sharing with the training supervisor.
 """
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import streamlit as st
 
 from app.theme import render_sidebar, inject_global_css
