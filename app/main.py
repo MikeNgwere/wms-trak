@@ -60,33 +60,34 @@ st.markdown(
         border: none;
         padding: 0.6rem 1rem;
     }
-    #login-wrapper {
-        max-width: 420px;
-        margin: 0 auto;
-        padding: 0 1rem;
-    }
-    #login-wrapper img {
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    
-    #login-wrapper div[data-testid="stImage"] {
-        display: flex;
-        justify-content: center;
-        width: 100%;
-    }
-    #login-wrapper img {
-        display: block;
-    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-
 def login_screen():
-    st.markdown("<div id='login-wrapper'>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <style>
+        .main .block-container {
+            max-width: 460px !important;
+            margin: 3rem auto !important;
+            padding: 0 1rem !important;
+        }
+        div[data-testid="stImage"] {
+            display: flex;
+            justify-content: center;
+        }
+        div.stForm {
+            border: 1px solid #e0e0e0;
+            border-radius: 18px;
+            padding: 2rem 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     try:
         st.image("app/assets/zimra_logo.png", width=160)
     except Exception:
@@ -109,7 +110,6 @@ def login_screen():
             st.rerun()
         else:
             st.error("Invalid credentials or inactive account.")
-    st.markdown("</div>", unsafe_allow_html=True)
 
 
 def officer_capture_tab(user):
