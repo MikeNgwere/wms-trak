@@ -14,7 +14,7 @@ import streamlit as st
 
 from app.auth import verify_login, create_session, get_user_by_session
 from app.bond_engine import entries_nearing_expiry
-from app.theme import render_sidebar, inject_global_css
+from app.theme import render_sidebar, inject_global_css, clear_form_keys
 from app.entries import capture_entry, entries_captured_by, active_entries_for_port, get_entry_full_detail
 from app.action_requests import (
     request_release_to_owner, request_forfeiture, request_destruction, request_eauction,
@@ -105,8 +105,6 @@ def login_screen():
     st.markdown("</div>", unsafe_allow_html=True)
 
 
-# ==================== OFFICER TABS ====================
-
 def officer_capture_tab(user):
     st.subheader("Capture a new RIH or NOS entry")
     entry_type = st.selectbox("Entry Type", ["RIH", "NOS"], key="capture_entry_type")
@@ -120,47 +118,61 @@ def officer_capture_tab(user):
         for w in storage_options
     }
 
+    form_keys = [
+        "cap_storage_choice", "cap_entry_number", "cap_type_number",
+        "cap_declared_value", "cap_quantity_units", "cap_goods_description",
+        "cap_gross_weight", "cap_net_weight", "cap_weight_unit",
+        "cap_rent_per_day", "cap_exchange_rate", "cap_expiry_date",
+        "cap_importer_name", "cap_importer_id", "cap_importer_contact",
+        "cap_importer_bpn", "cap_importer_address",
+        "cap_rih_reason_cat", "cap_rih_reason_narr", "cap_rih_act_clause",
+        "cap_nos_ec", "cap_nos_offence", "cap_nos_section", "cap_nos_marks",
+        "cap_nos_warning", "cap_nos_signature",
+        "cap_veh_reg", "cap_veh_chassis", "cap_veh_engine",
+        "cap_veh_make", "cap_veh_model", "cap_veh_colour", "cap_veh_year",
+    ]
+
     with st.form("capture_entry_form"):
         st.markdown(f"**{storage_label} Assignment**")
-        storage_choice = st.selectbox(storage_label, list(storage_choices.keys())) if storage_choices else None
+        storage_choice = st.selectbox(storage_label, list(storage_choices.keys()), key="cap_storage_choice") if storage_choices else None
 
         st.markdown("**Entry Details**")
         col1, col2 = st.columns(2)
         with col1:
-            entry_number = st.text_input("Entry Number")
-            nos_or_rih_number = st.text_input(f"{entry_type} Number")
+            entry_number = st.text_input("Entry Number", key="cap_entry_number")
+            nos_or_rih_number = st.text_input(f"{entry_type} Number", key="cap_type_number")
         with col2:
-            declared_value = st.number_input("Declared / Assessed Value (USD)", min_value=0.0, step=0.01)
-            quantity_units = st.text_input("Quantity / Unit of Measure")
+            declared_value = st.number_input("Declared / Assessed Value (USD)", min_value=0.0, step=0.01, key="cap_declared_value")
+            quantity_units = st.text_input("Quantity / Unit of Measure", key="cap_quantity_units")
 
-        goods_description = st.text_area("Exact Description of Goods")
+        goods_description = st.text_area("Exact Description of Goods", key="cap_goods_description")
 
         col3, col4, col5 = st.columns(3)
         with col3:
-            gross_weight = st.number_input("Gross Weight", min_value=0.0, step=0.1)
+            gross_weight = st.number_input("Gross Weight", min_value=0.0, step=0.1, key="cap_gross_weight")
         with col4:
-            net_weight = st.number_input("Net Weight", min_value=0.0, step=0.1)
+            net_weight = st.number_input("Net Weight", min_value=0.0, step=0.1, key="cap_net_weight")
         with col5:
-            weight_unit = st.selectbox("Weight Unit", ["kg", "tonnes", "litres", "grams"])
+            weight_unit = st.selectbox("Weight Unit", ["kg", "tonnes", "litres", "grams"], key="cap_weight_unit")
 
         st.markdown("**Financial & Compliance Details**")
         col6, col7, col8 = st.columns(3)
         with col6:
-            rent_charge_per_day = st.number_input("Rent Charge per Day (USD)", min_value=0.0, step=0.01)
+            rent_charge_per_day = st.number_input("Rent Charge per Day (USD)", min_value=0.0, step=0.01, key="cap_rent_per_day")
         with col7:
-            exchange_rate_zwg_usd = st.number_input("Exchange Rate (ZWG to USD)", min_value=0.0, step=0.0001, format="%.4f")
+            exchange_rate_zwg_usd = st.number_input("Exchange Rate (ZWG to USD)", min_value=0.0, step=0.0001, format="%.4f", key="cap_exchange_rate")
         with col8:
-            expiry_date = st.date_input("Expiry Date of Goods (if applicable)", value=None)
+            expiry_date = st.date_input("Expiry Date of Goods (if applicable)", value=None, key="cap_expiry_date")
 
         st.markdown("**Importer / Owner Details**")
         col9, col10 = st.columns(2)
         with col9:
-            importer_name = st.text_input("Full Name of Importer / Owner")
-            importer_id_number = st.text_input("National ID / Passport Number")
+            importer_name = st.text_input("Full Name of Importer / Owner", key="cap_importer_name")
+            importer_id_number = st.text_input("National ID / Passport Number", key="cap_importer_id")
         with col10:
-            importer_contact = st.text_input("Contact (Phone / Email)")
-            importer_bpn_tin = st.text_input("BPN / TIN (if applicable)")
-        importer_address = st.text_area("Physical / Postal Address")
+            importer_contact = st.text_input("Contact (Phone / Email)", key="cap_importer_contact")
+            importer_bpn_tin = st.text_input("BPN / TIN (if applicable)", key="cap_importer_bpn")
+        importer_address = st.text_area("Physical / Postal Address", key="cap_importer_address")
 
         rih_fields = {}
         nos_fields = {}
@@ -169,37 +181,38 @@ def officer_capture_tab(user):
             rih_fields["reason_category"] = st.selectbox(
                 "Reason Category",
                 ["failure_to_pay_duty", "missing_permit", "pending_valuation", "other"],
+                key="cap_rih_reason_cat",
             )
-            rih_fields["reason_narrative"] = st.text_area("Reason (narrative)")
-            rih_fields["act_clause"] = st.text_input("Applicable Act Clause")
+            rih_fields["reason_narrative"] = st.text_area("Reason (narrative)", key="cap_rih_reason_narr")
+            rih_fields["act_clause"] = st.text_input("Applicable Act Clause", key="cap_rih_act_clause")
         else:
             st.markdown("**NOS — Legal Contravention**")
-            nos_fields["seizing_officer_ec_number"] = st.text_input("Seizing Officer EC Number")
-            nos_fields["offence_committed"] = st.text_input("Offence Committed (e.g. Smuggling, Undervaluation)")
-            nos_fields["act_section_breached"] = st.text_input("Section of Act Breached")
-            nos_fields["marks_and_numbers"] = st.text_input("Marks & Numbers (shipping marks, seal numbers)")
-            nos_fields["statutory_warning_acknowledged"] = st.checkbox("Statutory warning given to offender")
-            nos_fields["offender_signature_received"] = st.checkbox("Offender's signature received on NOS")
+            nos_fields["seizing_officer_ec_number"] = st.text_input("Seizing Officer EC Number", key="cap_nos_ec")
+            nos_fields["offence_committed"] = st.text_input("Offence Committed (e.g. Smuggling, Undervaluation)", key="cap_nos_offence")
+            nos_fields["act_section_breached"] = st.text_input("Section of Act Breached", key="cap_nos_section")
+            nos_fields["marks_and_numbers"] = st.text_input("Marks & Numbers (shipping marks, seal numbers)", key="cap_nos_marks")
+            nos_fields["statutory_warning_acknowledged"] = st.checkbox("Statutory warning given to offender", key="cap_nos_warning")
+            nos_fields["offender_signature_received"] = st.checkbox("Offender's signature received on NOS", key="cap_nos_signature")
 
         vehicle_fields = {}
         if is_vehicle:
             st.markdown("**Vehicle Specifics**")
             col11, col12 = st.columns(2)
             with col11:
-                vehicle_fields["registration_number"] = st.text_input("Registration Number")
-                vehicle_fields["chassis_number"] = st.text_input("Chassis Number / VIN")
-                vehicle_fields["engine_number"] = st.text_input("Engine Number")
+                vehicle_fields["registration_number"] = st.text_input("Registration Number", key="cap_veh_reg")
+                vehicle_fields["chassis_number"] = st.text_input("Chassis Number / VIN", key="cap_veh_chassis")
+                vehicle_fields["engine_number"] = st.text_input("Engine Number", key="cap_veh_engine")
             with col12:
-                vehicle_fields["make"] = st.text_input("Make")
-                vehicle_fields["model"] = st.text_input("Model")
-                vehicle_fields["colour"] = st.text_input("Colour")
-            vehicle_fields["year_of_manufacture"] = st.number_input("Year of Manufacture", min_value=1950, max_value=2100, step=1)
+                vehicle_fields["make"] = st.text_input("Make", key="cap_veh_make")
+                vehicle_fields["model"] = st.text_input("Model", key="cap_veh_model")
+                vehicle_fields["colour"] = st.text_input("Colour", key="cap_veh_colour")
+            vehicle_fields["year_of_manufacture"] = st.number_input("Year of Manufacture", min_value=1950, max_value=2100, step=1, key="cap_veh_year")
 
         submitted = st.form_submit_button("Capture Entry", type="primary")
 
     if submitted:
         if not entry_number or not goods_description or not storage_choice:
-            st.error("Entry Number, Goods Description, and a Warehouse/Pound are required.")
+            st.error("Entry Number, Goods Description, and a Warehouse/Pound are required. Your other entries have been kept — please fill in what's missing and submit again.")
         else:
             if entry_type == "RIH":
                 rih_fields["rih_number"] = nos_or_rih_number
@@ -231,8 +244,9 @@ def officer_capture_tab(user):
                 nos_data=nos_fields if entry_type == "NOS" else None,
                 vehicle_data=vehicle_fields if is_vehicle else None,
             )
-            st.success(f"{entry_type} entry {entry_number} captured (ID {entry_id}).")
-
+            st.success(f"{entry_type} entry {entry_number} captured (ID {entry_id}). Form cleared for the next entry.")
+            clear_form_keys(form_keys)
+            st.rerun()
 
 def officer_my_entries_tab(user):
     st.subheader("Entries I've captured")
@@ -291,22 +305,27 @@ def officer_action_tab(user):
         key="req_action_type",
     )
 
+    form_keys = [
+        "req_entry_choice", "req_notes", "req_ministry_name", "req_letter_ref",
+        "req_ph_officer", "req_ph_reference", "req_destruction_reason",
+    ]
+
     with st.form("action_request_form"):
-        choice = st.selectbox("Entry", list(options.keys()))
-        notes = st.text_area("Notes")
+        choice = st.selectbox("Entry", list(options.keys()), key="req_entry_choice")
+        notes = st.text_area("Notes", key="req_notes")
 
         ministry_name = request_letter_reference = None
         port_health_officer_name = port_health_approval_reference = reason_for_destruction = None
 
         if action_type == "forfeiture":
             st.markdown("**Forfeiture — Ministry Details**")
-            ministry_name = st.text_input("Ministry Requesting Appropriation")
-            request_letter_reference = st.text_area("Letter / Document Reference (attach details or reference number)")
+            ministry_name = st.text_input("Ministry Requesting Appropriation", key="req_ministry_name")
+            request_letter_reference = st.text_area("Letter / Document Reference (attach details or reference number)", key="req_letter_ref")
         elif action_type == "destruction":
             st.markdown("**Destruction — Port Health Approval**")
-            port_health_officer_name = st.text_input("Approving Port Health Officer")
-            port_health_approval_reference = st.text_input("Port Health Approval Reference")
-            reason_for_destruction = st.text_area("Reason for Destruction (e.g. expired, dangerous, perishable, prohibited)")
+            port_health_officer_name = st.text_input("Approving Port Health Officer", key="req_ph_officer")
+            port_health_approval_reference = st.text_input("Port Health Approval Reference", key="req_ph_reference")
+            reason_for_destruction = st.text_area("Reason for Destruction (e.g. expired, dangerous, perishable, prohibited)", key="req_destruction_reason")
 
         req_submitted = st.form_submit_button("Submit Request", type="primary")
 
@@ -316,19 +335,20 @@ def officer_action_tab(user):
             request_release_to_owner(entry_id, user["user_id"], notes)
         elif action_type == "forfeiture":
             if not ministry_name:
-                st.error("Ministry name is required for forfeiture.")
+                st.error("Ministry name is required for forfeiture. Your other entries have been kept.")
                 return
             request_forfeiture(entry_id, user["user_id"], ministry_name, request_letter_reference, notes)
         elif action_type == "destruction":
             if not port_health_officer_name or not reason_for_destruction:
-                st.error("Port Health officer and reason for destruction are required.")
+                st.error("Port Health officer and reason for destruction are required. Your other entries have been kept.")
                 return
             request_destruction(entry_id, user["user_id"], port_health_officer_name,
                                  port_health_approval_reference, reason_for_destruction, notes)
         elif action_type == "e_auction":
             request_eauction(entry_id, user["user_id"], notes)
-        st.success(f"{action_type.replace('_', ' ').title()} request submitted to Supervisor for review.")
-
+        st.success(f"{action_type.replace('_', ' ').title()} request submitted to Supervisor for review. Form cleared.")
+        clear_form_keys(form_keys)
+        st.rerun()
 
 def officer_finalize_tab(user):
     st.subheader(f"Finalize manager-approved actions — {user['port_code']}")
@@ -552,18 +572,19 @@ def admin_users_tab(user):
         port_choices = {"All ports (Admin/Manager)": None}
         port_choices.update({p["port_name"]: p["port_code"] for p in ports})
         with st.form("create_user_form"):
-            full_name = st.text_input("Full Name")
-            username = st.text_input("Username (email)")
-            plain_password = st.text_input("Temporary Password", type="password")
-            role_pick = st.selectbox("Role", list(role_choices.keys()))
-            port_pick = st.selectbox("Port", list(port_choices.keys()))
+            full_name = st.text_input("Full Name", key="cu_full_name")
+            username = st.text_input("Username (email)", key="cu_username")
+            plain_password = st.text_input("Temporary Password", type="password", key="cu_password")
+            role_pick = st.selectbox("Role", list(role_choices.keys()), key="cu_role")
+            port_pick = st.selectbox("Port", list(port_choices.keys()), key="cu_port")
             create_submitted = st.form_submit_button("Create User", type="primary")
         if create_submitted:
             if not full_name or not username or not plain_password:
-                st.error("Full name, username, and password are required.")
+                st.error("Full name, username, and password are required. Your other entries have been kept.")
             else:
                 create_user(full_name, username, plain_password, role_choices[role_pick], port_choices[port_pick])
-                st.success(f"User {username} created.")
+                st.success(f"User {username} created. Form cleared.")
+                clear_form_keys(["cu_full_name", "cu_username", "cu_password", "cu_role", "cu_port"])
                 st.rerun()
 
     st.divider()

@@ -1,7 +1,8 @@
 """
 Pilot-test questionnaire: 15 Likert-scale (1-5) items grouped under
 3 research questions, plus statistical summary helpers for the
-Pilot Test Results page.
+Pilot Test Results page. One response per person — resubmitting
+updates the existing row rather than creating a duplicate.
 
 RQ1 (Q1-Q5):  Manual process weaknesses (baseline, pre-WMS-Trak)
 RQ2 (Q6-Q10): Digital system effectiveness (WMS-Trak)
@@ -36,22 +37,48 @@ QUESTIONS = {
 ALL_QUESTION_KEYS = [f"q{i}" for i in range(1, 16)]
 
 
+def get_response_for_user(user_id: int):
+    return fetch_one("SELECT * FROM questionnaire_responses WHERE submitted_by_user_id = %s", (user_id,))
+
+
 def submit_response(respondent_name: str, respondent_station: str, respondent_role: str,
-                     submitted_by_user_id: int, answers: dict, comments: str = ""):
-    """answers: dict of q1..q15 -> int (1-5)."""
-    cols = ", ".join(ALL_QUESTION_KEYS)
-    placeholders = ", ".join(["%s"] * 15)
-    values = [answers[k] for k in ALL_QUESTION_KEYS]
-    execute(
-        f"""
-        INSERT INTO questionnaire_responses (
-            respondent_name, respondent_station, respondent_role,
-            submitted_by_user_id, {cols}, comments
+                     submitted_by_user_id: int, answers: dict, comments: str = "") -> bool:
+    """
+    answers: dict of q1..q15 -> int (1-5).
+    Inserts a new response, or updates the existing one for this user
+    (one response per person). Returns True if this was an update
+    (existing response), False if it was a fresh insert.
+    """
+    existing = get_response_for_user(submitted_by_user_id)
+    cols = ALL_QUESTION_KEYS
+    values = [answers[k] for k in cols]
+
+    if existing:
+        set_clause = ", ".join(f"{k} = %s" for k in cols)
+        execute(
+            f"""
+            UPDATE questionnaire_responses
+            SET respondent_name = %s, respondent_station = %s, respondent_role = %s,
+                {set_clause}, comments = %s, submitted_at = now()
+            WHERE submitted_by_user_id = %s
+            """,
+            [respondent_name, respondent_station, respondent_role] + values + [comments, submitted_by_user_id],
         )
-        VALUES (%s, %s, %s, %s, {placeholders}, %s)
-        """,
-        [respondent_name, respondent_station, respondent_role, submitted_by_user_id] + values + [comments],
-    )
+        return True
+    else:
+        col_list = ", ".join(cols)
+        placeholders = ", ".join(["%s"] * 15)
+        execute(
+            f"""
+            INSERT INTO questionnaire_responses (
+                respondent_name, respondent_station, respondent_role,
+                submitted_by_user_id, {col_list}, comments
+            )
+            VALUES (%s, %s, %s, %s, {placeholders}, %s)
+            """,
+            [respondent_name, respondent_station, respondent_role, submitted_by_user_id] + values + [comments],
+        )
+        return False
 
 
 def all_responses():
