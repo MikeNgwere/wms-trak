@@ -70,12 +70,14 @@ st.markdown(
         margin-left: auto;
         margin-right: auto;
     }
-    #login-wrapper div.stForm {
-        border: 1px solid #e0e0e0;
-        border-radius: 18px;
-        padding: 2rem 1.5rem;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    
+    #login-wrapper div[data-testid="stImage"] {
+        display: flex;
+        justify-content: center;
         width: 100%;
+    }
+    #login-wrapper img {
+        display: block;
     }
     </style>
     """,
