@@ -38,7 +38,6 @@ inject_global_css()
 
 if "user" not in st.session_state:
     st.session_state.user = None
-
 st.markdown(
     """
     <style>
@@ -61,11 +60,22 @@ st.markdown(
         border: none;
         padding: 0.6rem 1rem;
     }
+    #login-wrapper {
+        max-width: 420px;
+        margin: 0 auto;
+        padding: 0 1rem;
+    }
+    #login-wrapper img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
     #login-wrapper div.stForm {
         border: 1px solid #e0e0e0;
         border-radius: 18px;
-        padding: 2rem 2.5rem;
+        padding: 2rem 1.5rem;
         box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        width: 100%;
     }
     </style>
     """,
@@ -75,32 +85,28 @@ st.markdown(
 
 def login_screen():
     st.markdown("<div id='login-wrapper'>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 1.3, 1])
-    with col2:
-        logo_col1, logo_col2, logo_col3 = st.columns([1, 1, 1])
-        with logo_col2:
-            try:
-                st.image("app/assets/zimra_logo.png", width=160)
-            except Exception:
-                pass
-        st.markdown(
-            "<h2 style='text-align:center;color:#1A1A1A;margin-top:0.5rem;'>WMS-Trak</h2>"
-            "<p style='text-align:center;color:#666;margin-bottom:1.5rem;'>Warehouse Management System</p>",
-            unsafe_allow_html=True,
-        )
-        with st.form("login"):
-            username = st.text_input("Username", label_visibility="collapsed", placeholder="Username")
-            password = st.text_input("Password", type="password", label_visibility="collapsed", placeholder="Password")
-            submitted = st.form_submit_button("SIGN IN", type="primary", use_container_width=True)
-        if submitted:
-            user = verify_login(username, password)
-            if user:
-                token = create_session(user["user_id"])
-                st.query_params["token"] = token
-                st.session_state.user = user
-                st.rerun()
-            else:
-                st.error("Invalid credentials or inactive account.")
+    try:
+        st.image("app/assets/zimra_logo.png", width=160)
+    except Exception:
+        pass
+    st.markdown(
+        "<h2 style='text-align:center;color:#1A1A1A;margin-top:0.5rem;'>WMS-Trak</h2>"
+        "<p style='text-align:center;color:#666;margin-bottom:1.5rem;'>Warehouse Management System</p>",
+        unsafe_allow_html=True,
+    )
+    with st.form("login"):
+        username = st.text_input("Username", label_visibility="collapsed", placeholder="Username")
+        password = st.text_input("Password", type="password", label_visibility="collapsed", placeholder="Password")
+        submitted = st.form_submit_button("SIGN IN", type="primary", use_container_width=True)
+    if submitted:
+        user = verify_login(username, password)
+        if user:
+            token = create_session(user["user_id"])
+            st.query_params["token"] = token
+            st.session_state.user = user
+            st.rerun()
+        else:
+            st.error("Invalid credentials or inactive account.")
     st.markdown("</div>", unsafe_allow_html=True)
 
 
