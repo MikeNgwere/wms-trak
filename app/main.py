@@ -34,7 +34,7 @@ from app.admin import (
 )
 from app.db import fetch_all
 
-st.set_page_config(page_title="WMS-Trak", layout="wide")
+st.set_page_config(page_title="WMS-Trak", page_icon="🏛️", layout="wide")
 inject_global_css()
 
 if "user" not in st.session_state:
