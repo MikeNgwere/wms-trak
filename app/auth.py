@@ -2,6 +2,10 @@
 Authentication, role-based access control, persistent login sessions,
 ZIMRA-email/password validation, and self-service profile requests
 (Admin-approved before an account becomes active).
+
+Since this app has no email-delivery capability, the requester sets
+their own password at request time (stored hashed) — Admin approval
+simply activates the account with that password already in place.
 """
 import re
 import secrets
@@ -123,9 +127,17 @@ def reset_password_self_service(user_id: int, new_plain_password: str):
 # ---------------- Self-service profile requests (Admin-approved) ----------------
 
 def submit_profile_request(full_name: str, email: str, phone_number: str,
-                            requested_role: str, requested_port: str | None, reason: str) -> int:
+                            requested_role: str, requested_port: str | None,
+                            reason: str, plain_password: str) -> int:
+    """
+    The requester sets their own password here (stored hashed), since
+    there is no email-delivery mechanism to communicate an
+    Admin-assigned temporary password after approval.
+    """
     if not is_valid_zimra_email(email):
         raise ValueError("Email must be a valid @zimra.co.zw address.")
+    if not is_strong_password(plain_password):
+        raise ValueError(password_requirements_text())
     existing_user = fetch_one("SELECT user_id FROM users WHERE username = %s", (email,))
     if existing_user:
         raise ValueError("An account with this email already exists.")
@@ -135,13 +147,14 @@ def submit_profile_request(full_name: str, email: str, phone_number: str,
     if existing_request:
         raise ValueError("A pending profile request for this email already exists.")
 
+    pw_hash = hash_password(plain_password)
     row = fetch_one(
         """
-        INSERT INTO profile_requests (full_name, email, phone_number, requested_role, requested_port, reason)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO profile_requests (full_name, email, phone_number, requested_role, requested_port, reason, password_hash)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         RETURNING request_id
         """,
-        (full_name, email, phone_number, requested_role, requested_port, reason),
+        (full_name, email, phone_number, requested_role, requested_port, reason, pw_hash),
     )
     return row["request_id"]
 
@@ -153,21 +166,21 @@ def pending_profile_requests():
 
 
 def approve_profile_request(request_id: int, admin_id: int, role_id: int, port_code: str | None,
-                             temp_password: str, notes: str = "") -> int:
+                             notes: str = "") -> int:
+    """Uses the password the requester already set at submission time."""
     req = fetch_one("SELECT * FROM profile_requests WHERE request_id = %s", (request_id,))
     if not req:
         raise ValueError("Request not found")
-    if not is_strong_password(temp_password):
-        raise ValueError(password_requirements_text())
+    if not req["password_hash"]:
+        raise ValueError("This request has no password on file and cannot be approved.")
 
-    pw_hash = hash_password(temp_password)
     user_row = fetch_one(
         """
         INSERT INTO users (full_name, username, password_hash, role_id, port_code, phone_number)
         VALUES (%s, %s, %s, %s, %s, %s)
         RETURNING user_id
         """,
-        (req["full_name"], req["email"], pw_hash, role_id, port_code, req["phone_number"]),
+        (req["full_name"], req["email"], req["password_hash"], role_id, port_code, req["phone_number"]),
     )
     execute(
         """
