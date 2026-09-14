@@ -7,6 +7,7 @@ from app.auth import hash_password
 
 
 # ---------------- User management ----------------
+
 def get_user_by_id(user_id: int):
     return fetch_one(
         """
@@ -17,6 +18,8 @@ def get_user_by_id(user_id: int):
         """,
         (user_id,),
     )
+
+
 def list_users():
     return fetch_all(
         """
@@ -47,6 +50,17 @@ def create_user(full_name: str, username: str, plain_password: str, role_id: int
         (full_name, username, pw_hash, role_id, port_code),
     )
     return row["user_id"]
+
+
+def update_user(user_id: int, full_name: str, username: str, role_id: int, port_code: str | None, phone_number: str | None):
+    execute(
+        """
+        UPDATE users
+        SET full_name = %s, username = %s, role_id = %s, port_code = %s, phone_number = %s
+        WHERE user_id = %s
+        """,
+        (full_name, username, role_id, port_code, phone_number, user_id),
+    )
 
 
 def set_user_active(user_id: int, is_active: bool):
@@ -112,17 +126,6 @@ def delete_user(user_id: int):
     execute("DELETE FROM users WHERE user_id = %s", (user_id,))
 
 
-def update_user(user_id: int, full_name: str, username: str, role_id: int, port_code: str | None, phone_number: str | None):
-    execute(
-        """
-        UPDATE users
-        SET full_name = %s, username = %s, role_id = %s, port_code = %s, phone_number = %s
-        WHERE user_id = %s
-        """,
-        (full_name, username, role_id, port_code, phone_number, user_id),
-    )
-
-
 # ---------------- Entry correction ----------------
 
 def search_entries(query: str):
@@ -186,7 +189,7 @@ def detained_goods_with_officer():
                e.bond_due_date, e.status, u.full_name AS captured_by_officer
         FROM entries e
         LEFT JOIN users u ON u.user_id = e.captured_by
-        WHERE e.status NOT IN ('released','sold','auctioned','appropriated')
+        WHERE e.status NOT IN ('released','sold','destroyed','appropriated')
         ORDER BY e.date_entered DESC
         """
     )
@@ -216,7 +219,7 @@ def revenue_stats():
     row = fetch_one(
         """
         SELECT COALESCE(SUM(amount_collected), 0) AS total_collected,
-               COUNT(*) FILTER (WHERE action_type = 'release' AND manager_status = 'approved') AS releases_completed
+               COUNT(*) FILTER (WHERE action_type = 'release_to_owner' AND manager_status = 'approved') AS releases_completed
         FROM action_requests
         """
     )
@@ -228,7 +231,7 @@ def warehouse_usage_stats():
         """
         SELECT w.warehouse_name, w.warehouse_type, w.capacity,
                COUNT(e.entry_id) FILTER (
-                   WHERE e.status NOT IN ('released','sold','auctioned','appropriated')
+                   WHERE e.status NOT IN ('released','sold','destroyed','appropriated')
                ) AS current_occupancy
         FROM warehouses w
         LEFT JOIN entries e ON e.warehouse_id = w.warehouse_id
@@ -246,7 +249,7 @@ def days_until_expiry_report(port_code: str | None = None):
                status
         FROM entries
         WHERE entry_type = 'RIH'
-              AND status NOT IN ('released','sold','auctioned','appropriated')
+              AND status NOT IN ('released','sold','destroyed','appropriated')
     """
     params = ()
     if port_code:
