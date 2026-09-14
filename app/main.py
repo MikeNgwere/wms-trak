@@ -12,7 +12,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
 
-from app.auth import verify_login, create_session, get_user_by_session
+from app.auth import (
+    verify_login, create_session, get_user_by_session,
+    is_valid_zimra_email, is_strong_password, password_requirements_text,
+    submit_profile_request, find_active_user_by_email, reset_password_self_service,
+    pending_profile_requests, approve_profile_request, reject_profile_request,
+)
+from app.admin import (
+    list_users, list_roles, list_ports, create_user, set_user_active,
+    reset_password, delete_user, search_entries, correct_entry,
+    audit_trail, detained_goods_with_officer, delete_message,
+    list_all_messages, revenue_stats, warehouse_usage_stats, days_until_expiry_report,
+)
 from app.bond_engine import entries_nearing_expiry
 from app.theme import render_sidebar, inject_global_css, clear_form_keys
 from app.entries import capture_entry, entries_captured_by, active_entries_for_port, get_entry_full_detail
@@ -24,20 +35,16 @@ from app.action_requests import (
     finalize_release_to_owner, finalize_forfeiture, finalize_destruction, finalize_eauction,
 )
 from app.warehouses import warehouses_for_port, toggle_full, goods_in_warehouse
-from app.warehouse_views import rih_list, seizures_list, seizures_ready_for_disposal, monthly_summary
+from app.warehouse_views import rih_list, seizures_list, monthly_summary
 from app.revenue import released_and_sold, revenue_summary
-from app.admin import (
-    list_users, list_roles, list_ports, create_user, set_user_active,
-    reset_password, delete_user, search_entries, correct_entry,
-    audit_trail, detained_goods_with_officer, delete_message,
-    list_all_messages, revenue_stats, warehouse_usage_stats, days_until_expiry_report,
-)
 from app.db import fetch_all
+
 st.set_page_config(page_title="WMS-Trak", page_icon="🏛️", layout="wide")
 inject_global_css()
 
 if "user" not in st.session_state:
     st.session_state.user = None
+
 st.markdown(
     """
     <style>
@@ -64,6 +71,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
 
 def login_screen():
     st.markdown(
@@ -98,19 +106,119 @@ def login_screen():
         unsafe_allow_html=True,
     )
     with st.form("login"):
-        username = st.text_input("Username", label_visibility="collapsed", placeholder="Username")
+        username = st.text_input("Username", label_visibility="collapsed", placeholder="ZIMRA Email (@zimra.co.zw)")
         password = st.text_input("Password", type="password", label_visibility="collapsed", placeholder="Password")
         submitted = st.form_submit_button("SIGN IN", type="primary", use_container_width=True)
     if submitted:
-        user = verify_login(username, password)
-        if user:
-            token = create_session(user["user_id"])
-            st.query_params["token"] = token
-            st.session_state.user = user
-            st.rerun()
+        if not is_valid_zimra_email(username):
+            st.error("Please sign in with a valid ZIMRA email address (@zimra.co.zw).")
         else:
-            st.error("Invalid credentials or inactive account.")
+            user = verify_login(username, password)
+            if user:
+                token = create_session(user["user_id"])
+                st.query_params["token"] = token
+                st.session_state.user = user
+                st.rerun()
+            else:
+                st.error("Invalid credentials or inactive account.")
 
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Request a Profile", use_container_width=True):
+            st.session_state.auth_view = "request_profile"
+            st.rerun()
+    with col2:
+        if st.button("Forgot Password?", use_container_width=True):
+            st.session_state.auth_view = "forgot_password"
+            st.rerun()
+
+
+def request_profile_screen():
+    st.markdown("<h2 style='text-align:center;'>Request a Profile</h2>", unsafe_allow_html=True)
+    st.write("Submit your details below. An Admin will review and approve your account before you can sign in.")
+
+    roles = list_roles()
+    ports = list_ports()
+    role_names = [r["role_name"] for r in roles if r["role_name"] != "Admin"]
+    port_choices = {"All ports / Not applicable": None}
+    port_choices.update({p["port_name"]: p["port_code"] for p in ports})
+
+    with st.form("request_profile_form"):
+        full_name = st.text_input("Full Name")
+        email = st.text_input("ZIMRA Email (@zimra.co.zw)")
+        phone_number = st.text_input("Phone Number")
+        requested_role = st.selectbox("Requested Role", role_names)
+        requested_port_label = st.selectbox("Station", list(port_choices.keys()))
+        reason = st.text_area("Reason for Request")
+        submitted = st.form_submit_button("Submit Request", type="primary", use_container_width=True)
+
+    if submitted:
+        if not full_name or not email:
+            st.error("Full name and email are required.")
+        elif not is_valid_zimra_email(email):
+            st.error("Only @zimra.co.zw email addresses are accepted — gmail and other domains are not allowed.")
+        else:
+            try:
+                submit_profile_request(
+                    full_name, email, phone_number, requested_role,
+                    port_choices[requested_port_label], reason,
+                )
+                st.success("Your profile request has been submitted. You'll be able to sign in once an Admin approves it.")
+            except ValueError as e:
+                st.error(str(e))
+
+    if st.button("← Back to Sign In"):
+        st.session_state.auth_view = None
+        st.rerun()
+
+
+def forgot_password_screen():
+    st.markdown("<h2 style='text-align:center;'>Forgot Password</h2>", unsafe_allow_html=True)
+
+    if "reset_verified_user_id" not in st.session_state:
+        st.session_state.reset_verified_user_id = None
+
+    if not st.session_state.reset_verified_user_id:
+        st.write("Enter your ZIMRA email to continue.")
+        with st.form("verify_email_form"):
+            email = st.text_input("ZIMRA Email (@zimra.co.zw)")
+            verify_submitted = st.form_submit_button("Verify Email", type="primary", use_container_width=True)
+        if verify_submitted:
+            if not is_valid_zimra_email(email):
+                st.error("Please enter a valid @zimra.co.zw email address.")
+            else:
+                found = find_active_user_by_email(email)
+                if found:
+                    st.session_state.reset_verified_user_id = found["user_id"]
+                    st.session_state.reset_verified_name = found["full_name"]
+                    st.rerun()
+                else:
+                    st.error("No active account found with that email.")
+    else:
+        st.write(f"Account verified: **{st.session_state.reset_verified_name}**. Enter a new password below.")
+        st.caption(password_requirements_text())
+        with st.form("new_password_form"):
+            new_password = st.text_input("New Password", type="password")
+            confirm_password = st.text_input("Confirm New Password", type="password")
+            reset_submitted = st.form_submit_button("Reset Password", type="primary", use_container_width=True)
+        if reset_submitted:
+            if new_password != confirm_password:
+                st.error("Passwords do not match.")
+            elif not is_strong_password(new_password):
+                st.error(password_requirements_text())
+            else:
+                reset_password_self_service(st.session_state.reset_verified_user_id, new_password)
+                st.success("Password reset successfully. You can now sign in.")
+                st.session_state.reset_verified_user_id = None
+                st.session_state.auth_view = None
+
+    if st.button("← Back to Sign In"):
+        st.session_state.reset_verified_user_id = None
+        st.session_state.auth_view = None
+        st.rerun()
+
+
+# ==================== OFFICER TABS ====================
 
 def officer_capture_tab(user):
     st.subheader("Capture a new RIH or NOS entry")
@@ -255,6 +363,7 @@ def officer_capture_tab(user):
             clear_form_keys(form_keys)
             st.rerun()
 
+
 def officer_my_entries_tab(user):
     st.subheader("Entries I've captured")
     rows = entries_captured_by(user["user_id"])
@@ -356,6 +465,7 @@ def officer_action_tab(user):
         st.success(f"{action_type.replace('_', ' ').title()} request submitted to Supervisor for review. Form cleared.")
         clear_form_keys(form_keys)
         st.rerun()
+
 
 def officer_finalize_tab(user):
     st.subheader(f"Finalize manager-approved actions — {user['port_code']}")
@@ -570,6 +680,61 @@ def warehouse_overview_tab(user):
 
 # ==================== ADMIN TABS ====================
 
+def admin_profile_requests_tab(user):
+    st.subheader("Profile Requests")
+    rows = pending_profile_requests()
+    if not rows:
+        st.info("No pending profile requests.")
+        return
+
+    roles = list_roles()
+    ports = list_ports()
+    role_choices = {r["role_name"]: r["role_id"] for r in roles}
+    port_choices = {"All ports (Admin/Manager)": None}
+    port_choices.update({p["port_name"]: p["port_code"] for p in ports})
+
+    for req in rows:
+        with st.container(border=True):
+            st.write(f"**{req['full_name']}** ({req['email']})")
+            st.caption(f"Requested role: {req['requested_role']} · Phone: {req['phone_number']}")
+            st.caption(f"Reason: {req['reason']}")
+
+            default_role_index = list(role_choices.keys()).index(req["requested_role"]) if req["requested_role"] in role_choices else 0
+
+            with st.form(f"approve_form_{req['request_id']}"):
+                role_pick = st.selectbox("Assign Role", list(role_choices.keys()), index=default_role_index, key=f"pr_role_{req['request_id']}")
+                port_pick = st.selectbox("Assign Port", list(port_choices.keys()), key=f"pr_port_{req['request_id']}")
+                temp_password = st.text_input("Temporary Password", type="password", key=f"pr_pw_{req['request_id']}")
+                st.caption(password_requirements_text())
+                notes = st.text_input("Notes (optional)", key=f"pr_notes_{req['request_id']}")
+                c1, c2 = st.columns(2)
+                with c1:
+                    approve_submitted = st.form_submit_button("Approve", type="primary")
+                with c2:
+                    reject_submitted = st.form_submit_button("Reject")
+
+            if approve_submitted:
+                if not temp_password:
+                    st.error("A temporary password is required to approve this request.")
+                elif not is_strong_password(temp_password):
+                    st.error(password_requirements_text())
+                else:
+                    try:
+                        approve_profile_request(
+                            req["request_id"], user["user_id"], role_choices[role_pick],
+                            port_choices[port_pick], temp_password, notes,
+                        )
+                        st.success(f"Profile approved — account created for {req['email']}.")
+                        st.rerun()
+                    except ValueError as e:
+                        st.error(str(e))
+
+            if reject_submitted:
+                reject_profile_request(req["request_id"], user["user_id"], notes)
+                st.info("Request rejected.")
+                st.rerun()
+
+
 def admin_users_tab(user):
     st.subheader("User Management")
     with st.expander("Create a new user"):
@@ -580,14 +745,19 @@ def admin_users_tab(user):
         port_choices.update({p["port_name"]: p["port_code"] for p in ports})
         with st.form("create_user_form"):
             full_name = st.text_input("Full Name", key="cu_full_name")
-            username = st.text_input("Username (email)", key="cu_username")
+            username = st.text_input("Username (ZIMRA email, @zimra.co.zw)", key="cu_username")
             plain_password = st.text_input("Temporary Password", type="password", key="cu_password")
+            st.caption(password_requirements_text())
             role_pick = st.selectbox("Role", list(role_choices.keys()), key="cu_role")
             port_pick = st.selectbox("Port", list(port_choices.keys()), key="cu_port")
             create_submitted = st.form_submit_button("Create User", type="primary")
         if create_submitted:
             if not full_name or not username or not plain_password:
                 st.error("Full name, username, and password are required. Your other entries have been kept.")
+            elif not is_valid_zimra_email(username):
+                st.error("Username must be a valid @zimra.co.zw email address. Your other entries have been kept.")
+            elif not is_strong_password(plain_password):
+                st.error(password_requirements_text() + " Your other entries have been kept.")
             else:
                 create_user(full_name, username, plain_password, role_choices[role_pick], port_choices[port_pick])
                 st.success(f"User {username} created. Form cleared.")
@@ -612,8 +782,11 @@ def admin_users_tab(user):
         with c2:
             new_pw = st.text_input("New password", type="password", key="reset_pw_input")
             if st.button("Reset Password", key="reset_pw_btn") and new_pw:
-                reset_password(chosen_id, new_pw)
-                st.success("Password reset.")
+                if not is_strong_password(new_pw):
+                    st.error(password_requirements_text())
+                else:
+                    reset_password(chosen_id, new_pw)
+                    st.success("Password reset.")
         with c3:
             if st.button("Delete User", key="delete_user_btn"):
                 delete_user(chosen_id)
@@ -772,18 +945,23 @@ def role_dashboard():
             released_sold_tab(user)
 
     elif user["role_name"] == "Admin":
-        tabs = st.tabs(["Users", "Entry Correction", "Audit Trail", "Messages", "Statistics", "Warehouse Overview"])
+        tabs = st.tabs([
+            "Profile Requests", "Users", "Entry Correction", "Audit Trail",
+            "Messages", "Statistics", "Warehouse Overview",
+        ])
         with tabs[0]:
-            admin_users_tab(user)
+            admin_profile_requests_tab(user)
         with tabs[1]:
-            admin_entry_correction_tab(user)
+            admin_users_tab(user)
         with tabs[2]:
-            admin_audit_tab(user)
+            admin_entry_correction_tab(user)
         with tabs[3]:
-            admin_messages_tab(user)
+            admin_audit_tab(user)
         with tabs[4]:
-            admin_statistics_tab(user)
+            admin_messages_tab(user)
         with tabs[5]:
+            admin_statistics_tab(user)
+        with tabs[6]:
             warehouse_overview_tab(user)
 
     else:
@@ -799,6 +977,12 @@ if st.session_state.user is None:
             st.session_state.user = restored_user
 
 if st.session_state.user is None:
-    login_screen()
+    view = st.session_state.get("auth_view")
+    if view == "request_profile":
+        request_profile_screen()
+    elif view == "forgot_password":
+        forgot_password_screen()
+    else:
+        login_screen()
 else:
     role_dashboard()
