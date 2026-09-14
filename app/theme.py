@@ -6,6 +6,7 @@ at the top so the sidebar looks and behaves identically everywhere.
 import streamlit as st
 
 from app.db import execute
+from app.auth import delete_session
 
 ZIMRA_GREEN = "#4CAF50"
 ZIMRA_GREEN_DARK = "#3d8b40"
@@ -15,12 +16,10 @@ def inject_global_css():
     st.markdown(
         f"""
         <style>
-        /* Sidebar base */
         section[data-testid="stSidebar"] {{
             background-color: #FAFCFA;
             border-right: 1px solid #e5e5e5;
         }}
-        /* Nav links */
         section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"] {{
             border-radius: 8px;
             margin: 2px 8px;
@@ -36,7 +35,6 @@ def inject_global_css():
         section[data-testid="stSidebar"] a[aria-current="page"] span {{
             color: white !important;
         }}
-        /* Primary buttons everywhere */
         button[kind="primary"], div[data-testid="stFormSubmitButton"] button {{
             background-color: {ZIMRA_GREEN} !important;
             color: white !important;
@@ -45,7 +43,6 @@ def inject_global_css():
         button[kind="primary"]:hover, div[data-testid="stFormSubmitButton"] button:hover {{
             background-color: {ZIMRA_GREEN_DARK} !important;
         }}
-        /* Account card at bottom of sidebar */
         .zimra-account-card {{
             border-top: 1px solid #e5e5e5;
             margin-top: 1rem;
@@ -83,14 +80,9 @@ def render_sidebar(user: dict):
 
             st.divider()
             if st.button("Log out", key="logout_btn", use_container_width=True):
-                st.session_state.user = None
+                token = st.query_params.get("token")
+                delete_session(token)
+                st.query_params.clear()
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
                 st.rerun()
-
-def clear_form_keys(keys: list):
-    """Delete specific session_state keys so their widgets reset to
-    defaults on the next rerun — call this only after a successful
-    save, never on validation failure, so skipped/incomplete input
-    stays intact for the user to fix."""
-    for k in keys:
-        if k in st.session_state:
-            del st.session_state[k]
