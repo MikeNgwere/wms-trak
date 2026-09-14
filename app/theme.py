@@ -82,13 +82,10 @@ def render_sidebar(user: dict):
             if st.button("Log out", key="logout_btn", use_container_width=True):
                 token = st.query_params.get("token")
                 delete_session(token)
+                st.query_params.clear()
                 for key in list(st.session_state.keys()):
                     del st.session_state[key]
-                st.markdown(
-                    "<script>window.location.href = window.location.pathname;</script>",
-                    unsafe_allow_html=True,
-                )
-                st.stop()
+                st.rerun()
                 
 
 def clear_form_keys(keys: list):
