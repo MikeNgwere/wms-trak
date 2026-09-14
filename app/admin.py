@@ -7,7 +7,16 @@ from app.auth import hash_password
 
 
 # ---------------- User management ----------------
-
+def get_user_by_id(user_id: int):
+    return fetch_one(
+        """
+        SELECT u.user_id, u.full_name, u.username, u.role_id, r.role_name,
+               u.port_code, u.is_active, u.phone_number
+        FROM users u JOIN roles r ON r.role_id = u.role_id
+        WHERE u.user_id = %s
+        """,
+        (user_id,),
+    )
 def list_users():
     return fetch_all(
         """
@@ -49,8 +58,69 @@ def reset_password(user_id: int, new_plain_password: str):
     execute("UPDATE users SET password_hash = %s WHERE user_id = %s", (pw_hash, user_id))
 
 
+# Tables/columns that reference users(user_id) — used to check whether
+# a user has any activity on record before allowing a hard delete.
+_USER_DEPENDENCY_CHECKS = [
+    ("entries", "captured_by"),
+    ("entries", "last_edited_by"),
+    ("rih_details", "issuing_officer_id"),
+    ("nos_details", "seizing_officer_id"),
+    ("action_requests", "requested_by"),
+    ("action_requests", "supervisor_by"),
+    ("action_requests", "manager_by"),
+    ("release_to_owner_details", "finalized_by"),
+    ("forfeiture_details", "finalized_by"),
+    ("destruction_details", "finalized_by"),
+    ("eauction_details", "finalized_by"),
+    ("payments", "recorded_by"),
+    ("seizures", "supervisor_approval_by"),
+    ("seizures", "manager_approval_by"),
+    ("audit_log", "actor_user_id"),
+    ("notifications", "recipient_user_id"),
+    ("messages", "sender_user_id"),
+    ("messages", "recipient_user_id"),
+    ("questionnaire_responses", "submitted_by_user_id"),
+    ("warehouses", "marked_full_by"),
+    ("profile_requests", "reviewed_by"),
+]
+
+
+def user_has_activity(user_id: int) -> bool:
+    """True if this user appears anywhere in the operational/audit trail."""
+    for table, column in _USER_DEPENDENCY_CHECKS:
+        row = fetch_one(f"SELECT 1 FROM {table} WHERE {column} = %s LIMIT 1", (user_id,))
+        if row:
+            return True
+    return False
+
+
 def delete_user(user_id: int):
+    """
+    Only permits a hard delete when the user has no recorded activity
+    (never captured/approved/finalized anything, no audit log entries,
+    etc.) — deleting a user with history would silently break the
+    audit trail this system exists to preserve. Deactivate instead
+    for any user with activity on record.
+    """
+    if user_has_activity(user_id):
+        raise ValueError(
+            "This user has recorded activity (entries, approvals, audit log, etc.) "
+            "and cannot be deleted, to preserve the audit trail. Deactivate the "
+            "account instead — this immediately blocks login while keeping their history intact."
+        )
+    execute("DELETE FROM sessions WHERE user_id = %s", (user_id,))
     execute("DELETE FROM users WHERE user_id = %s", (user_id,))
+
+
+def update_user(user_id: int, full_name: str, username: str, role_id: int, port_code: str | None, phone_number: str | None):
+    execute(
+        """
+        UPDATE users
+        SET full_name = %s, username = %s, role_id = %s, port_code = %s, phone_number = %s
+        WHERE user_id = %s
+        """,
+        (full_name, username, role_id, port_code, phone_number, user_id),
+    )
 
 
 # ---------------- Entry correction ----------------
