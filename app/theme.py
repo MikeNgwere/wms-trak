@@ -89,3 +89,13 @@ def render_sidebar(user: dict):
                     unsafe_allow_html=True,
                 )
                 st.stop()
+                
+
+def clear_form_keys(keys: list):
+    """Delete specific session_state keys so their widgets reset to
+    defaults on the next rerun — call this only after a successful
+    save, never on validation failure, so skipped/incomplete input
+    stays intact for the user to fix."""
+    for k in keys:
+        if k in st.session_state:
+            del st.session_state[k]
