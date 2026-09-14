@@ -83,8 +83,9 @@ def render_sidebar(user: dict):
                 token = st.query_params.get("token")
                 delete_session(token)
                 st.query_params.clear()
-                for key in list(st.session_state.keys()):
-                    del st.session_state[key]
+                st.session_state.user = None
+                st.session_state.auth_view = None
+                st.session_state.reset_verified_user_id = None
                 st.rerun()
                 
 
