@@ -86,7 +86,7 @@ def render_sidebar(user: dict):
                 st.session_state.user = None
                 st.session_state.auth_view = None
                 st.session_state.reset_verified_user_id = None
-                st.rerun()
+                st.switch_page("app/main.py")
                 
 
 def clear_form_keys(keys: list):
