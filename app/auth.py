@@ -1,7 +1,9 @@
 """
-Authentication, role-based access control, and persistent login
-sessions (so a page refresh doesn't log the user out).
+Authentication, role-based access control, persistent login sessions,
+ZIMRA-email/password validation, and self-service profile requests
+(Admin-approved before an account becomes active).
 """
+import re
 import secrets
 from datetime import datetime, timedelta
 
@@ -10,7 +12,24 @@ import bcrypt
 from app.db import fetch_one, fetch_all, execute
 
 SESSION_LIFETIME_DAYS = 7
+ZIMRA_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@zimra\.co\.zw$", re.IGNORECASE)
+PASSWORD_RE = re.compile(r"^(?=.*[0-9])(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?~`]).{8,}$")
 
+
+def is_valid_zimra_email(email: str) -> bool:
+    return bool(ZIMRA_EMAIL_RE.match((email or "").strip()))
+
+
+def is_strong_password(password: str) -> bool:
+    """At least 8 characters, one number, one uppercase letter, one symbol."""
+    return bool(PASSWORD_RE.match(password or ""))
+
+
+def password_requirements_text() -> str:
+    return "Password must be at least 8 characters and include a number, an uppercase letter, and a symbol."
+
+
+# ---------------- Core login ----------------
 
 def verify_login(username: str, password: str):
     user = fetch_one(
@@ -84,3 +103,89 @@ def get_user_by_session(token: str):
 def delete_session(token: str):
     if token:
         execute("DELETE FROM sessions WHERE session_token = %s", (token,))
+
+
+# ---------------- Password reset (in-app, no email delivery configured) ----------------
+
+def find_active_user_by_email(email: str):
+    """Used by the Forgot Password flow to verify the account exists before allowing a reset."""
+    return fetch_one(
+        "SELECT user_id, full_name, username FROM users WHERE username = %s AND is_active = TRUE",
+        (email,),
+    )
+
+
+def reset_password_self_service(user_id: int, new_plain_password: str):
+    pw_hash = hash_password(new_plain_password)
+    execute("UPDATE users SET password_hash = %s WHERE user_id = %s", (pw_hash, user_id))
+
+
+# ---------------- Self-service profile requests (Admin-approved) ----------------
+
+def submit_profile_request(full_name: str, email: str, phone_number: str,
+                            requested_role: str, requested_port: str | None, reason: str) -> int:
+    if not is_valid_zimra_email(email):
+        raise ValueError("Email must be a valid @zimra.co.zw address.")
+    existing_user = fetch_one("SELECT user_id FROM users WHERE username = %s", (email,))
+    if existing_user:
+        raise ValueError("An account with this email already exists.")
+    existing_request = fetch_one(
+        "SELECT request_id FROM profile_requests WHERE email = %s AND status = 'pending'", (email,)
+    )
+    if existing_request:
+        raise ValueError("A pending profile request for this email already exists.")
+
+    row = fetch_one(
+        """
+        INSERT INTO profile_requests (full_name, email, phone_number, requested_role, requested_port, reason)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING request_id
+        """,
+        (full_name, email, phone_number, requested_role, requested_port, reason),
+    )
+    return row["request_id"]
+
+
+def pending_profile_requests():
+    return fetch_all(
+        "SELECT * FROM profile_requests WHERE status = 'pending' ORDER BY created_at"
+    )
+
+
+def approve_profile_request(request_id: int, admin_id: int, role_id: int, port_code: str | None,
+                             temp_password: str, notes: str = "") -> int:
+    req = fetch_one("SELECT * FROM profile_requests WHERE request_id = %s", (request_id,))
+    if not req:
+        raise ValueError("Request not found")
+    if not is_strong_password(temp_password):
+        raise ValueError(password_requirements_text())
+
+    pw_hash = hash_password(temp_password)
+    user_row = fetch_one(
+        """
+        INSERT INTO users (full_name, username, password_hash, role_id, port_code, phone_number)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        RETURNING user_id
+        """,
+        (req["full_name"], req["email"], pw_hash, role_id, port_code, req["phone_number"]),
+    )
+    execute(
+        """
+        UPDATE profile_requests
+        SET status = 'approved', reviewed_by = %s, reviewed_at = now(), review_notes = %s
+        WHERE request_id = %s
+        """,
+        (admin_id, notes, request_id),
+    )
+    return user_row["user_id"]
+
+
+def reject_profile_request(request_id: int, admin_id: int, notes: str = ""):
+    execute(
+        """
+        UPDATE profile_requests
+        SET status = 'rejected', reviewed_by = %s, reviewed_at = now(), review_notes = %s
+        WHERE request_id = %s
+        """,
+        (admin_id, notes, request_id),
+    )
