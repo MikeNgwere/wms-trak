@@ -23,6 +23,7 @@ from app.admin import (
     reset_password, delete_user, search_entries, correct_entry,
     audit_trail, detained_goods_with_officer, delete_message,
     list_all_messages, revenue_stats, warehouse_usage_stats, days_until_expiry_report,
+    get_user_by_id, update_user,
 )
 from app.bond_engine import entries_nearing_expiry
 from app.theme import render_sidebar, inject_global_css, clear_form_keys
@@ -131,6 +132,7 @@ def login_screen():
         if st.button("Forgot Password?", use_container_width=True):
             st.session_state.auth_view = "forgot_password"
             st.rerun()
+
 
 def request_profile_screen():
     st.markdown("<h2 style='text-align:center;'>Request a Profile</h2>", unsafe_allow_html=True)
@@ -742,8 +744,18 @@ def admin_profile_requests_tab(user):
                 st.session_state.admin_profile_feedback = ("success", f"Request from {req['email']} has been rejected.")
                 st.rerun()
 
+
 def admin_users_tab(user):
     st.subheader("User Management")
+
+    feedback = st.session_state.pop("admin_user_feedback", None)
+    if feedback:
+        kind, message = feedback
+        if kind == "success":
+            st.success(message)
+        else:
+            st.error(message)
+
     with st.expander("Create a new user"):
         roles = list_roles()
         ports = list_ports()
@@ -773,33 +785,73 @@ def admin_users_tab(user):
 
     st.divider()
     rows = list_users()
-    if rows:
-        st.dataframe(rows, use_container_width=True)
-        user_choices = {f"{u['full_name']} ({u['username']})": u["user_id"] for u in rows}
-        chosen = st.selectbox("Manage user", list(user_choices.keys()), key="admin_manage_user")
-        chosen_id = user_choices[chosen]
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            if st.button("Deactivate", key="deactivate_user"):
-                set_user_active(chosen_id, False)
-                st.rerun()
-            if st.button("Reactivate", key="reactivate_user"):
-                set_user_active(chosen_id, True)
-                st.rerun()
-        with c2:
-            new_pw = st.text_input("New password", type="password", key="reset_pw_input")
-            if st.button("Reset Password", key="reset_pw_btn") and new_pw:
-                if not is_strong_password(new_pw):
-                    st.error(password_requirements_text())
-                else:
-                    reset_password(chosen_id, new_pw)
-                    st.success("Password reset.")
-        with c3:
-            if st.button("Delete User", key="delete_user_btn"):
-                delete_user(chosen_id)
-                st.rerun()
-    else:
+    if not rows:
         st.info("No users found.")
+        return
+
+    st.dataframe(rows, use_container_width=True)
+    user_choices = {f"{u['full_name']} ({u['username']})": u["user_id"] for u in rows}
+    chosen = st.selectbox("Manage user", list(user_choices.keys()), key="admin_manage_user")
+    chosen_id = user_choices[chosen]
+    detail = get_user_by_id(chosen_id)
+
+    with st.expander(f"Edit Profile — {detail['full_name']}"):
+        roles = list_roles()
+        ports = list_ports()
+        role_choices = {r["role_name"]: r["role_id"] for r in roles}
+        port_choices = {"All ports (Admin/Manager)": None}
+        port_choices.update({p["port_name"]: p["port_code"] for p in ports})
+        role_names = list(role_choices.keys())
+        port_names = list(port_choices.keys())
+        current_role_index = role_names.index(detail["role_name"]) if detail["role_name"] in role_names else 0
+        current_port_name = next((name for name, code in port_choices.items() if code == detail["port_code"]), port_names[0])
+        current_port_index = port_names.index(current_port_name)
+
+        with st.form(f"edit_user_form_{chosen_id}"):
+            edit_full_name = st.text_input("Full Name", value=detail["full_name"])
+            edit_username = st.text_input("Username (ZIMRA email)", value=detail["username"])
+            edit_phone = st.text_input("Phone Number", value=detail["phone_number"] or "")
+            edit_role = st.selectbox("Role", role_names, index=current_role_index)
+            edit_port = st.selectbox("Port", port_names, index=current_port_index)
+            edit_submitted = st.form_submit_button("Save Changes", type="primary")
+
+        if edit_submitted:
+            if not edit_full_name or not edit_username:
+                st.session_state.admin_user_feedback = ("error", "Full name and username are required.")
+            elif not is_valid_zimra_email(edit_username):
+                st.session_state.admin_user_feedback = ("error", "Username must be a valid @zimra.co.zw email address.")
+            else:
+                update_user(chosen_id, edit_full_name, edit_username, role_choices[edit_role], port_choices[edit_port], edit_phone)
+                st.session_state.admin_user_feedback = ("success", f"Profile updated for {edit_full_name}.")
+            st.rerun()
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("Deactivate", key="deactivate_user"):
+            set_user_active(chosen_id, False)
+            st.session_state.admin_user_feedback = ("success", f"{detail['full_name']} deactivated.")
+            st.rerun()
+        if st.button("Reactivate", key="reactivate_user"):
+            set_user_active(chosen_id, True)
+            st.session_state.admin_user_feedback = ("success", f"{detail['full_name']} reactivated.")
+            st.rerun()
+    with c2:
+        new_pw = st.text_input("New password", type="password", key="reset_pw_input")
+        if st.button("Reset Password", key="reset_pw_btn") and new_pw:
+            if not is_strong_password(new_pw):
+                st.session_state.admin_user_feedback = ("error", password_requirements_text())
+            else:
+                reset_password(chosen_id, new_pw)
+                st.session_state.admin_user_feedback = ("success", f"Password reset for {detail['full_name']}.")
+            st.rerun()
+    with c3:
+        if st.button("Delete User", key="delete_user_btn"):
+            try:
+                delete_user(chosen_id)
+                st.session_state.admin_user_feedback = ("success", f"{detail['full_name']} permanently deleted.")
+            except ValueError as e:
+                st.session_state.admin_user_feedback = ("error", str(e))
+            st.rerun()
 
 
 def admin_entry_correction_tab(user):
