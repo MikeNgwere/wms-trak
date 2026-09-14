@@ -132,10 +132,9 @@ def login_screen():
             st.session_state.auth_view = "forgot_password"
             st.rerun()
 
-
 def request_profile_screen():
     st.markdown("<h2 style='text-align:center;'>Request a Profile</h2>", unsafe_allow_html=True)
-    st.write("Submit your details below. An Admin will review and approve your account before you can sign in.")
+    st.write("Submit your details below, including the password you'd like to use. An Admin will review your request — you'll be able to sign in with this password once it's approved, typically within 24 hours.")
 
     roles = list_roles()
     ports = list_ports()
@@ -150,20 +149,27 @@ def request_profile_screen():
         requested_role = st.selectbox("Requested Role", role_names)
         requested_port_label = st.selectbox("Station", list(port_choices.keys()))
         reason = st.text_area("Reason for Request")
+        password = st.text_input("Choose a Password", type="password")
+        confirm_password = st.text_input("Confirm Password", type="password")
+        st.caption(password_requirements_text())
         submitted = st.form_submit_button("Submit Request", type="primary", use_container_width=True)
 
     if submitted:
-        if not full_name or not email:
-            st.error("Full name and email are required.")
+        if not full_name or not email or not password:
+            st.error("Full name, email, and password are required.")
         elif not is_valid_zimra_email(email):
             st.error("Only @zimra.co.zw email addresses are accepted — gmail and other domains are not allowed.")
+        elif password != confirm_password:
+            st.error("Passwords do not match.")
+        elif not is_strong_password(password):
+            st.error(password_requirements_text())
         else:
             try:
                 submit_profile_request(
                     full_name, email, phone_number, requested_role,
-                    port_choices[requested_port_label], reason,
+                    port_choices[requested_port_label], reason, password,
                 )
-                st.success("Your profile request has been submitted. You'll be able to sign in once an Admin approves it.")
+                st.success("Your profile request has been submitted and will be reviewed within 24 hours. You'll be able to sign in with the password you chose once it's approved.")
             except ValueError as e:
                 st.error(str(e))
 
@@ -682,6 +688,15 @@ def warehouse_overview_tab(user):
 
 def admin_profile_requests_tab(user):
     st.subheader("Profile Requests")
+
+    feedback = st.session_state.pop("admin_profile_feedback", None)
+    if feedback:
+        kind, message = feedback
+        if kind == "success":
+            st.success(message)
+        else:
+            st.error(message)
+
     rows = pending_profile_requests()
     if not rows:
         st.info("No pending profile requests.")
@@ -704,8 +719,6 @@ def admin_profile_requests_tab(user):
             with st.form(f"approve_form_{req['request_id']}"):
                 role_pick = st.selectbox("Assign Role", list(role_choices.keys()), index=default_role_index, key=f"pr_role_{req['request_id']}")
                 port_pick = st.selectbox("Assign Port", list(port_choices.keys()), key=f"pr_port_{req['request_id']}")
-                temp_password = st.text_input("Temporary Password", type="password", key=f"pr_pw_{req['request_id']}")
-                st.caption(password_requirements_text())
                 notes = st.text_input("Notes (optional)", key=f"pr_notes_{req['request_id']}")
                 c1, c2 = st.columns(2)
                 with c1:
@@ -714,26 +727,20 @@ def admin_profile_requests_tab(user):
                     reject_submitted = st.form_submit_button("Reject")
 
             if approve_submitted:
-                if not temp_password:
-                    st.error("A temporary password is required to approve this request.")
-                elif not is_strong_password(temp_password):
-                    st.error(password_requirements_text())
-                else:
-                    try:
-                        approve_profile_request(
-                            req["request_id"], user["user_id"], role_choices[role_pick],
-                            port_choices[port_pick], temp_password, notes,
-                        )
-                        st.success(f"Profile approved — account created for {req['email']}.")
-                        st.rerun()
-                    except ValueError as e:
-                        st.error(str(e))
+                try:
+                    approve_profile_request(
+                        req["request_id"], user["user_id"], role_choices[role_pick],
+                        port_choices[port_pick], notes,
+                    )
+                    st.session_state.admin_profile_feedback = ("success", f"Profile approved — account created for {req['email']}.")
+                except ValueError as e:
+                    st.session_state.admin_profile_feedback = ("error", str(e))
+                st.rerun()
 
             if reject_submitted:
                 reject_profile_request(req["request_id"], user["user_id"], notes)
-                st.info("Request rejected.")
+                st.session_state.admin_profile_feedback = ("success", f"Request from {req['email']} has been rejected.")
                 st.rerun()
-
 
 def admin_users_tab(user):
     st.subheader("User Management")
