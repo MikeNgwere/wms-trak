@@ -27,7 +27,7 @@ from app.admin import (
 )
 from app.bond_engine import entries_nearing_expiry
 from app.theme import render_sidebar, inject_global_css, clear_form_keys
-from app.entries import capture_entry, entries_captured_by, active_entries_for_port, get_entry_full_detail
+from app.entries import capture_entry, entries_captured_by, active_entries_for_port, get_entry_full_detail, perishable_goods_nearing_expiry
 from app.action_requests import (
     request_release_to_owner, request_forfeiture, request_destruction, request_eauction,
     pending_supervisor_review, supervisor_review,

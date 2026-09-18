@@ -180,3 +180,27 @@ def get_entry_full_detail(entry_id: int):
     entry["nos"] = fetch_one("SELECT * FROM nos_details WHERE entry_id = %s", (entry_id,))
     entry["vehicle"] = fetch_one("SELECT * FROM vehicle_details WHERE entry_id = %s", (entry_id,))
     return entry
+
+
+def perishable_goods_nearing_expiry(port_code: str | None = None, warning_days: int = 14):
+    """
+    Goods with a physical expiry_date set (perishables, dangerous goods,
+    etc.) that are approaching or past that date — distinct from the
+    statutory 60-day RIH / 90-day NOS deadlines, which are tracked
+    separately via bond_due_date and seizure appeal_deadline.
+    """
+    query = """
+        SELECT entry_id, entry_number, entry_type, port_code, warehouse_id,
+               goods_description, expiry_date, status,
+               (expiry_date - CURRENT_DATE) AS days_to_expiry
+        FROM entries
+        WHERE expiry_date IS NOT NULL
+              AND status NOT IN ('released', 'sold', 'destroyed', 'appropriated')
+              AND expiry_date <= CURRENT_DATE + %s
+    """
+    params = [warning_days]
+    if port_code:
+        query += " AND port_code = %s"
+        params.append(port_code)
+    query += " ORDER BY expiry_date ASC"
+    return fetch_all(query, tuple(params))

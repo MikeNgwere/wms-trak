@@ -52,6 +52,13 @@ st.write(
     "PostgreSQL (Supabase), and Streamlit, and deployed for live pilot testing "
     "and supervisor review."
 )
+st.markdown("### Full Write-up — Chapters 1–3")
+st.write(
+    "The full narrative write-up of our Introduction, Literature Review, and "
+    "Methodology chapters is available here:"
+)
+st.link_button("📘 Read Chapters 1–3", "https://claude.ai/artifact/1X17DYY7kwDmqmCSWLAFV6")
+st.divider()
 
 st.markdown("### Results")
 st.info(
