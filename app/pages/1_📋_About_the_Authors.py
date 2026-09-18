@@ -1,10 +1,6 @@
 """
-About the Authors — project information and group member details,
-for easy sharing with the training supervisor.
+About the Authors — project name, research group, and supervisor.
 """
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import streamlit as st
 
 from app.theme import render_sidebar, inject_global_css
@@ -24,63 +20,6 @@ st.markdown("### Project Title")
 st.write(
     "Development of a Digital Reconciliation and Expiry Monitoring System "
     "for State Warehouse Compliance at ZIMRA (WMS-Trak)"
-)
-
-st.markdown("### Institution & Programme")
-st.write("Zimbabwe Revenue Authority (ZIMRA) — Graduate Trainee Research Programme")
-
-st.markdown("### Problem Scope")
-st.write(
-    "State Warehouse (RIH) and Notice of Seizure (NOS) goods at ZIMRA are currently "
-    "tracked using manual registers. This creates blind spots: overstayed goods are "
-    "typically identified only during periodic physical audits rather than in real "
-    "time, and there is no consolidated, auditable trail linking capture, approval, "
-    "payment, and final disposition of detained goods. WMS-Trak digitises this "
-    "process end-to-end for a single-station pilot (Forbes — ZWFB), covering RIH "
-    "and NOS entries, warehouse/pound capacity management, a role-based approval "
-    "chain (Officer → Supervisor → Manager), payment finalization, and a full "
-    "audit trail."
-)
-
-st.markdown("### Methodology")
-st.write(
-    "The project follows a design science research approach: current manual "
-    "processes were reviewed against the Customs and Excise Act [Chapter 23:02] "
-    "and its General Regulations to extract accurate statutory periods (bond "
-    "expiry, seizure appeal windows), followed by iterative design, development, "
-    "and testing of the WMS-Trak prototype. The system was built with Python, "
-    "PostgreSQL (Supabase), and Streamlit, and deployed for live pilot testing "
-    "and supervisor review."
-)
-st.markdown("### Full Write-up — Chapters 1–3")
-st.write(
-    "The full narrative write-up of our Introduction, Literature Review, and "
-    "Methodology chapters is available here:"
-)
-st.link_button("📘 Read Chapters 1–3", "https://claude.ai/artifact/1X17DYY7kwDmqmCSWLAFV6")
-st.divider()
-
-st.markdown("### Results")
-st.info(
-    "To be completed as pilot testing and evaluation progress — summarise "
-    "observed outcomes here (e.g. entries tracked, time-to-detect improvements, "
-    "user feedback) once available."
-)
-
-st.markdown("### Recent Progress")
-st.write(
-    "The prototype is live and deployed for pilot use at ZWFB. Current "
-    "functionality includes: full RIH/NOS capture with importer, vehicle, "
-    "rent-per-day, exchange rate, expiry date, and weight-unit fields; "
-    "warehouse and vehicle-pound capacity tracking (Warehouses A–E, Pounds "
-    "A–E); role-based access (Officer, Supervisor, Manager, Admin); and four "
-    "distinct release/disposal pathways — Release to Owner, Forfeiture "
-    "(appropriation to the State), Destruction, and E-Auction — each "
-    "routed through an Officer → Supervisor → Manager approval chain, with "
-    "the Officer finalizing type-specific details (payment breakdown, "
-    "representative details, destruction record, or sale proceeds) once "
-    "Manager approval is granted. A full audit trail, chat-style messaging, "
-    "and persistent login sessions are also in place."
 )
 
 st.markdown("### Research Group — Graduate Trainees, 2026")
