@@ -26,7 +26,7 @@ if chapter == "Chapter 1: Introduction":
 
     st.subheader("1.1 Background of the Study")
     st.write(
-        "Any officer who has manned the Bonds and Exports desk, or spent a shift at the State Warehouse, "
+        "Any officer who has spent a shift at the State Warehouse, "
         "will recognise the process this study is concerned with. Goods that cannot be entered on arrival "
         "end up in our custody under section 39 of the Customs and Excise Act [Chapter 23:02] — logged in "
         "the RIH register while duty, penalties, and warehouse rent remain outstanding. Others land with us "
