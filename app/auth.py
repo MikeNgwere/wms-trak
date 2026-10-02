@@ -16,7 +16,7 @@ import bcrypt
 from app.db import fetch_one, fetch_all, execute
 
 SESSION_LIFETIME_DAYS = 7
-ZIMRA_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@zimra\.co\.zw$", re.IGNORECASE)
+ZIMRA_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+'-]+@zimra\.co\.zw$", re.IGNORECASE)
 PASSWORD_RE = re.compile(r"^(?=.*[0-9])(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?~`]).{8,}$")
 
 
