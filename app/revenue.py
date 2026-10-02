@@ -32,7 +32,9 @@ def released_and_sold(port_code: str | None = None, limit: int = 200):
 
 def revenue_summary(port_code: str | None = None):
     query = """
-        SELECT COALESCE(SUM(ar.amount_collected), 0) AS total_collected,
+        SELECT COALESCE(SUM(ar.amount_collected), 0) AS total_usd,
+               COALESCE(SUM(ar.amount_collected * e.exchange_rate_zwg_usd), 0) AS total_zwg,
+               COUNT(*) FILTER (WHERE e.exchange_rate_zwg_usd IS NULL) AS missing_rate_count,
                COUNT(*) AS total_finalized
         FROM action_requests ar
         JOIN entries e ON e.entry_id = ar.entry_id

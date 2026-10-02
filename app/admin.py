@@ -218,9 +218,12 @@ def list_all_messages(limit: int = 200):
 def revenue_stats():
     row = fetch_one(
         """
-        SELECT COALESCE(SUM(amount_collected), 0) AS total_collected,
-               COUNT(*) FILTER (WHERE action_type = 'release_to_owner' AND manager_status = 'approved') AS releases_completed
-        FROM action_requests
+        SELECT COALESCE(SUM(ar.amount_collected), 0) AS total_usd,
+               COALESCE(SUM(ar.amount_collected * e.exchange_rate_zwg_usd), 0) AS total_zwg,
+               COUNT(*) FILTER (WHERE ar.amount_collected IS NOT NULL AND e.exchange_rate_zwg_usd IS NULL) AS missing_rate_count,
+               COUNT(*) FILTER (WHERE ar.action_type = 'release_to_owner' AND ar.manager_status = 'approved') AS releases_completed
+        FROM action_requests ar
+        JOIN entries e ON e.entry_id = ar.entry_id
         """
     )
     return row

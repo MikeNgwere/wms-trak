@@ -578,11 +578,15 @@ def released_sold_tab(user):
     st.subheader("Released & Sold Goods" + (f" — {scope_port}" if scope_port else " — All Ports"))
 
     summary = revenue_summary(scope_port)
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Revenue Collected (USD)", f"{summary['total_collected']:,.2f}")
+        st.metric("Total Revenue (USD)", f"{summary['total_usd']:,.2f}")
     with col2:
+        st.metric("Total Revenue (ZWG)", f"{summary['total_zwg']:,.2f}")
+    with col3:
         st.metric("Entries Finalized", summary["total_finalized"])
+    if summary["missing_rate_count"]:
+        st.caption(f"⚠️ {summary['missing_rate_count']} finalized entries have no exchange rate recorded, so they're excluded from the ZWG total.")
 
     st.divider()
     rows = released_and_sold(scope_port)
@@ -930,11 +934,15 @@ def admin_messages_tab(user):
 def admin_statistics_tab(user):
     st.subheader("Statistics")
     rev = revenue_stats()
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Revenue Collected (USD)", f"{rev['total_collected']:,.2f}")
+        st.metric("Total Revenue (USD)", f"{rev['total_usd']:,.2f}")
     with col2:
+        st.metric("Total Revenue (ZWG)", f"{rev['total_zwg']:,.2f}")
+    with col3:
         st.metric("Releases Completed", rev["releases_completed"])
+    if rev["missing_rate_count"]:
+        st.caption(f"⚠️ {rev['missing_rate_count']} finalized entries have no exchange rate recorded, so they're excluded from the ZWG total.")
 
     st.divider()
     st.markdown("**Warehouse usage**")
@@ -959,12 +967,23 @@ def role_dashboard():
 
     st.title(f"{user['role_name']} Dashboard")
 
-    st.subheader("Entries nearing expiry / overdue")
+    scope_port = None if user["role_name"] in ("Manager", "Admin") else user["port_code"]
+
+    st.subheader("Bond / Appeal Deadlines Approaching or Overdue")
+    st.caption("RIH: 60-day bond period · NOS: 90-day appeal window")
     rows = entries_nearing_expiry(warning_window_days=2)
     if rows:
         st.dataframe(rows, use_container_width=True)
     else:
-        st.info("No entries nearing expiry.")
+        st.info("No entries nearing their statutory deadline.")
+
+    st.subheader("Perishable Goods Approaching Physical Expiry")
+    st.caption("Goods with a recorded expiry date, within 14 days or already expired — separate from the statutory bond/appeal clock above")
+    perishable_rows = perishable_goods_nearing_expiry(scope_port, warning_days=14)
+    if perishable_rows:
+        st.dataframe(perishable_rows, use_container_width=True)
+    else:
+        st.info("No perishable goods approaching expiry.")
     st.divider()
 
     if user["role_name"] == "Officer":
