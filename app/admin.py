@@ -40,6 +40,9 @@ def list_ports():
 
 
 def create_user(full_name: str, username: str, plain_password: str, role_id: int, port_code: str | None):
+    existing = fetch_one("SELECT user_id FROM users WHERE username = %s", (username,))
+    if existing:
+        raise ValueError(f"A user with the email {username} already exists.")
     pw_hash = hash_password(plain_password)
     row = fetch_one(
         """

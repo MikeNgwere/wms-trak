@@ -801,10 +801,13 @@ def admin_users_tab(user):
             elif not is_strong_password(plain_password):
                 st.error(password_requirements_text() + " Your other entries have been kept.")
             else:
-                create_user(full_name, username, plain_password, role_choices[role_pick], port_choices[port_pick])
-                st.success(f"User {username} created. Form cleared.")
-                clear_form_keys(["cu_full_name", "cu_username", "cu_password", "cu_role", "cu_port"])
-                st.rerun()
+                try:
+                    create_user(full_name, username, plain_password, role_choices[role_pick], port_choices[port_pick])
+                    st.success(f"User {username} created. Form cleared.")
+                    clear_form_keys(["cu_full_name", "cu_username", "cu_password", "cu_role", "cu_port"])
+                    st.rerun()
+                except ValueError as e:
+                    st.error(str(e))
 
     st.divider()
     rows = list_users()
