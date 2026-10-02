@@ -273,9 +273,19 @@ def _mark_effected(request_id: int, entry_id: int, entry_number: str, final_stat
 
 
 def finalize_release_to_owner(
-    request_id: int, officer_id: int, duty_paid: float, additional_duty: float,
-    rent_paid: float, receipt_number: str, y_number: str, clearance_details: str,
+    request_id: int, officer_id: int,
+    duty_paid_usd: float, duty_paid_zwg: float,
+    additional_duty_usd: float, additional_duty_zwg: float,
+    rent_paid_usd: float, rent_paid_zwg: float,
+    receipt_number: str, y_number: str, clearance_details: str,
 ):
+    """
+    Records exactly what the client paid, in whichever currency (or mix
+    of both) they actually paid in — no conversion between USD and ZWG.
+    rent_calculated is a USD-denominated system suggestion only (based
+    on rent_charge_per_day), shown to the officer as a reference; the
+    actual amount recorded is whatever was paid.
+    """
     req = fetch_one(
         """
         SELECT ar.entry_id, e.entry_number, e.date_entered, e.rent_charge_per_day
@@ -293,30 +303,38 @@ def finalize_release_to_owner(
     execute(
         """
         UPDATE release_to_owner_details
-        SET duty_paid = %s, additional_duty = %s, rent_days_calculated = %s,
-            rent_calculated = %s, rent_paid = %s, receipt_number = %s,
-            y_number = %s, clearance_details = %s, finalized_by = %s, finalized_at = now()
+        SET duty_paid_usd = %s, duty_paid_zwg = %s,
+            additional_duty_usd = %s, additional_duty_zwg = %s,
+            rent_days_calculated = %s, rent_calculated = %s,
+            rent_paid_usd = %s, rent_paid_zwg = %s,
+            receipt_number = %s, y_number = %s, clearance_details = %s,
+            finalized_by = %s, finalized_at = now()
         WHERE request_id = %s
         """,
-        (duty_paid, additional_duty, days, rent_calculated, rent_paid,
+        (duty_paid_usd, duty_paid_zwg, additional_duty_usd, additional_duty_zwg,
+         days, rent_calculated, rent_paid_usd, rent_paid_zwg,
          receipt_number, y_number, clearance_details, officer_id, request_id),
     )
 
-    total_paid = (duty_paid or 0) + (additional_duty or 0) + (rent_paid or 0)
+    total_usd = (duty_paid_usd or 0) + (additional_duty_usd or 0) + (rent_paid_usd or 0)
+    total_zwg = (duty_paid_zwg or 0) + (additional_duty_zwg or 0) + (rent_paid_zwg or 0)
+
     execute(
         """
         INSERT INTO payments (entry_id, duty_amount, penalty_amount, rent_amount,
-                               paid_amount, payment_date, receipt_number, recorded_by)
-        VALUES (%s, %s, 0, %s, %s, now(), %s, %s)
+                               paid_amount, paid_amount_usd, paid_amount_zwg,
+                               payment_date, receipt_number, recorded_by)
+        VALUES (%s, %s, 0, %s, %s, %s, %s, now(), %s, %s)
         """,
-        (req["entry_id"], (duty_paid or 0) + (additional_duty or 0), rent_paid, total_paid, receipt_number, officer_id),
+        (req["entry_id"], (duty_paid_usd or 0) + (additional_duty_usd or 0), rent_paid_usd or 0,
+         total_usd, total_usd, total_zwg, receipt_number, officer_id),
     )
     execute(
-        "UPDATE action_requests SET amount_collected = %s WHERE request_id = %s",
-        (total_paid, request_id),
+        "UPDATE action_requests SET amount_collected_usd = %s, amount_collected_zwg = %s WHERE request_id = %s",
+        (total_usd, total_zwg, request_id),
     )
     _mark_effected(request_id, req["entry_id"], req["entry_number"], "released", officer_id,
-                    f"Released to owner. Receipt {receipt_number}, total {total_paid}")
+                    f"Released to owner. Receipt {receipt_number}. USD {total_usd}, ZWG {total_zwg}")
     return rent_calculated
 
 
@@ -369,7 +387,9 @@ def finalize_destruction(
 
 
 def finalize_eauction(
-    request_id: int, officer_id: int, revenue_collected: float, buyer_details: str, receipt_number: str,
+    request_id: int, officer_id: int,
+    revenue_collected_usd: float, revenue_collected_zwg: float,
+    buyer_details: str, receipt_number: str,
 ):
     req = fetch_one(
         "SELECT ar.entry_id, e.entry_number FROM action_requests ar JOIN entries e ON e.entry_id = ar.entry_id WHERE ar.request_id = %s",
@@ -380,23 +400,25 @@ def finalize_eauction(
     execute(
         """
         UPDATE eauction_details
-        SET revenue_collected = %s, buyer_details = %s, receipt_number = %s,
+        SET revenue_collected_usd = %s, revenue_collected_zwg = %s,
+            buyer_details = %s, receipt_number = %s,
             finalized_by = %s, finalized_at = now()
         WHERE request_id = %s
         """,
-        (revenue_collected, buyer_details, receipt_number, officer_id, request_id),
+        (revenue_collected_usd, revenue_collected_zwg, buyer_details, receipt_number, officer_id, request_id),
     )
     execute(
         """
         INSERT INTO payments (entry_id, duty_amount, penalty_amount, rent_amount,
-                               paid_amount, payment_date, receipt_number, recorded_by)
-        VALUES (%s, 0, 0, 0, %s, now(), %s, %s)
+                               paid_amount, paid_amount_usd, paid_amount_zwg,
+                               payment_date, receipt_number, recorded_by)
+        VALUES (%s, 0, 0, 0, %s, %s, %s, now(), %s, %s)
         """,
-        (req["entry_id"], revenue_collected, receipt_number, officer_id),
+        (req["entry_id"], revenue_collected_usd, revenue_collected_usd, revenue_collected_zwg, receipt_number, officer_id),
     )
     execute(
-        "UPDATE action_requests SET amount_collected = %s WHERE request_id = %s",
-        (revenue_collected, request_id),
+        "UPDATE action_requests SET amount_collected_usd = %s, amount_collected_zwg = %s WHERE request_id = %s",
+        (revenue_collected_usd, revenue_collected_zwg, request_id),
     )
     _mark_effected(request_id, req["entry_id"], req["entry_number"], "sold", officer_id,
-                    f"Sold via e-auction. Receipt {receipt_number}, revenue {revenue_collected}")
+                    f"Sold via e-auction. Receipt {receipt_number}. USD {revenue_collected_usd}, ZWG {revenue_collected_zwg}")

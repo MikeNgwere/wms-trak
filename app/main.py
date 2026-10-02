@@ -228,148 +228,123 @@ def forgot_password_screen():
 
 # ==================== OFFICER TABS ====================
 
-def officer_capture_tab(user):
-    st.subheader("Capture a new RIH or NOS entry")
-    entry_type = st.selectbox("Entry Type", ["RIH", "NOS"], key="capture_entry_type")
-    is_vehicle = st.checkbox("This entry is a vehicle", key="capture_is_vehicle")
+def officer_finalize_tab(user):
+    st.subheader(f"Finalize manager-approved actions — {user['port_code']}")
+    rows = pending_officer_finalization(user["port_code"])
+    if not rows:
+        st.info("Nothing awaiting finalization.")
+        return
 
-    storage_type = "vehicle_pound" if is_vehicle else "goods"
-    storage_options = warehouses_for_port(user["port_code"], warehouse_type=storage_type)
-    storage_label = "Pound" if is_vehicle else "Warehouse"
-    storage_choices = {
-        f"{w['warehouse_name']} ({w['current_occupancy']}/{w['capacity']}" + (", FULL)" if w["is_full"] else ")"): w["warehouse_id"]
-        for w in storage_options
-    }
+    for r in rows:
+        with st.container(border=True):
+            st.write(f"**{r['entry_number']}** ({r['entry_type']}) — {r['action_type'].replace('_', ' ').title()}")
+            st.caption(f"{r['goods_description']} · Declared value: {r['declared_value']}")
 
-    form_keys = [
-        "cap_storage_choice", "cap_entry_number", "cap_type_number",
-        "cap_declared_value", "cap_quantity_units", "cap_goods_description",
-        "cap_gross_weight", "cap_net_weight", "cap_weight_unit",
-        "cap_rent_per_day", "cap_exchange_rate", "cap_expiry_date",
-        "cap_importer_name", "cap_importer_id", "cap_importer_contact",
-        "cap_importer_bpn", "cap_importer_address",
-        "cap_rih_reason_cat", "cap_rih_reason_narr", "cap_rih_act_clause",
-        "cap_nos_ec", "cap_nos_offence", "cap_nos_section", "cap_nos_marks",
-        "cap_nos_warning", "cap_nos_signature",
-        "cap_veh_reg", "cap_veh_chassis", "cap_veh_engine",
-        "cap_veh_make", "cap_veh_model", "cap_veh_colour", "cap_veh_year",
-    ]
+            if r["action_type"] == "release_to_owner":
+                with st.form(f"finalize_release_{r['request_id']}"):
+                    st.markdown("**Duty**")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        duty_paid_usd = st.number_input("Duty Paid (USD)", min_value=0.0, step=0.01, key=f"dutyusd_{r['request_id']}")
+                    with c2:
+                        duty_paid_zwg = st.number_input("Duty Paid (ZWG)", min_value=0.0, step=0.01, key=f"dutyzwg_{r['request_id']}")
 
-    with st.form("capture_entry_form"):
-        st.markdown(f"**{storage_label} Assignment**")
-        storage_choice = st.selectbox(storage_label, list(storage_choices.keys()), key="cap_storage_choice") if storage_choices else None
+                    st.markdown("**Additional Duty**")
+                    c3, c4 = st.columns(2)
+                    with c3:
+                        additional_duty_usd = st.number_input("Additional Duty (USD)", min_value=0.0, step=0.01, key=f"adddutyusd_{r['request_id']}")
+                    with c4:
+                        additional_duty_zwg = st.number_input("Additional Duty (ZWG)", min_value=0.0, step=0.01, key=f"adddutyzwg_{r['request_id']}")
 
-        st.markdown("**Entry Details**")
-        col1, col2 = st.columns(2)
-        with col1:
-            entry_number = st.text_input("Entry Number", key="cap_entry_number")
-            nos_or_rih_number = st.text_input(f"{entry_type} Number", key="cap_type_number")
-        with col2:
-            declared_value = st.number_input("Declared / Assessed Value (USD)", min_value=0.0, step=0.01, key="cap_declared_value")
-            quantity_units = st.text_input("Quantity / Unit of Measure", key="cap_quantity_units")
+                    st.markdown("**Warehouse Rent**")
+                    st.caption(f"System rent rate: {r['rent_charge_per_day']} USD/day — shown as a reference only; record exactly what the client paid in each currency below.")
+                    c5, c6 = st.columns(2)
+                    with c5:
+                        rent_paid_usd = st.number_input("Rent Paid (USD)", min_value=0.0, step=0.01, key=f"rentusd_{r['request_id']}")
+                    with c6:
+                        rent_paid_zwg = st.number_input("Rent Paid (ZWG)", min_value=0.0, step=0.01, key=f"rentzwg_{r['request_id']}")
 
-        goods_description = st.text_area("Exact Description of Goods", key="cap_goods_description")
+                    receipt_number = st.text_input("Receipt Number", key=f"receipt_{r['request_id']}")
+                    y_number = st.text_input("Y Number", key=f"ynum_{r['request_id']}")
+                    clearance_details = st.text_area("Further Clearance Details", key=f"clear_{r['request_id']}")
+                    submit = st.form_submit_button("Save Final Release", type="primary")
+                if submit:
+                    if not receipt_number:
+                        st.error("Receipt number is required.")
+                    else:
+                        rent_calc = finalize_release_to_owner(
+                            r["request_id"], user["user_id"],
+                            duty_paid_usd, duty_paid_zwg,
+                            additional_duty_usd, additional_duty_zwg,
+                            rent_paid_usd, rent_paid_zwg,
+                            receipt_number, y_number, clearance_details,
+                        )
+                        st.success(f"Release finalized. System rent reference: {rent_calc:.2f} (USD/day basis).")
+                        st.rerun()
 
-        col3, col4, col5 = st.columns(3)
-        with col3:
-            gross_weight = st.number_input("Gross Weight", min_value=0.0, step=0.1, key="cap_gross_weight")
-        with col4:
-            net_weight = st.number_input("Net Weight", min_value=0.0, step=0.1, key="cap_net_weight")
-        with col5:
-            weight_unit = st.selectbox("Weight Unit", ["kg", "tonnes", "litres", "grams"], key="cap_weight_unit")
+            elif r["action_type"] == "forfeiture":
+                td = r.get("type_detail") or {}
+                st.caption(f"Ministry: {td.get('ministry_name')} · Reference: {td.get('request_letter_reference')}")
+                with st.form(f"finalize_forfeit_{r['request_id']}"):
+                    representative_name = st.text_input("Representative Name", key=f"repname_{r['request_id']}")
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        representative_id_number = st.text_input("Representative ID Number", key=f"repid_{r['request_id']}")
+                    with c2:
+                        representative_occupation = st.text_input("Representative Occupation", key=f"repocc_{r['request_id']}")
+                    goods_or_vehicle_finalization_details = st.text_area("Goods / Vehicle Final Details", key=f"gvdet_{r['request_id']}")
+                    submit = st.form_submit_button("Save Final Appropriation", type="primary")
+                if submit:
+                    if not representative_name:
+                        st.error("Representative name is required.")
+                    else:
+                        finalize_forfeiture(
+                            r["request_id"], user["user_id"], representative_name,
+                            representative_id_number, representative_occupation,
+                            goods_or_vehicle_finalization_details,
+                        )
+                        st.success("Appropriation finalized.")
+                        st.rerun()
 
-        st.markdown("**Financial & Compliance Details**")
-        col6, col7, col8 = st.columns(3)
-        with col6:
-            rent_charge_per_day = st.number_input("Rent Charge per Day (USD)", min_value=0.0, step=0.01, key="cap_rent_per_day")
-        with col7:
-            exchange_rate_zwg_usd = st.number_input("Exchange Rate (ZWG to USD)", min_value=0.0, step=0.0001, format="%.4f", key="cap_exchange_rate")
-        with col8:
-            expiry_date = st.date_input("Expiry Date of Goods (if applicable)", value=None, key="cap_expiry_date")
+            elif r["action_type"] == "destruction":
+                td = r.get("type_detail") or {}
+                st.caption(f"Port Health: {td.get('port_health_officer_name')} · Reason: {td.get('reason_for_destruction')}")
+                with st.form(f"finalize_destroy_{r['request_id']}"):
+                    destruction_date = st.date_input("Date of Destruction", key=f"ddate_{r['request_id']}")
+                    destruction_place = st.text_input("Place of Destruction", key=f"dplace_{r['request_id']}")
+                    stakeholders_present = st.text_area(
+                        "Stakeholders Present (e.g. Police rep, Port Health rep, Army rep, other officers)",
+                        key=f"dstake_{r['request_id']}",
+                    )
+                    submit = st.form_submit_button("Save Destruction Record", type="primary")
+                if submit:
+                    if not destruction_place:
+                        st.error("Place of destruction is required.")
+                    else:
+                        finalize_destruction(
+                            r["request_id"], user["user_id"], destruction_date,
+                            destruction_place, stakeholders_present,
+                        )
+                        st.success("Destruction finalized.")
+                        st.rerun()
 
-        st.markdown("**Importer / Owner Details**")
-        col9, col10 = st.columns(2)
-        with col9:
-            importer_name = st.text_input("Full Name of Importer / Owner", key="cap_importer_name")
-            importer_id_number = st.text_input("National ID / Passport Number", key="cap_importer_id")
-        with col10:
-            importer_contact = st.text_input("Contact (Phone / Email)", key="cap_importer_contact")
-            importer_bpn_tin = st.text_input("BPN / TIN (if applicable)", key="cap_importer_bpn")
-        importer_address = st.text_area("Physical / Postal Address", key="cap_importer_address")
-
-        rih_fields = {}
-        nos_fields = {}
-        if entry_type == "RIH":
-            st.markdown("**RIH — Reason for Detention**")
-            rih_fields["reason_category"] = st.selectbox(
-                "Reason Category",
-                ["failure_to_pay_duty", "missing_permit", "pending_valuation", "other"],
-                key="cap_rih_reason_cat",
-            )
-            rih_fields["reason_narrative"] = st.text_area("Reason (narrative)", key="cap_rih_reason_narr")
-            rih_fields["act_clause"] = st.text_input("Applicable Act Clause", key="cap_rih_act_clause")
-        else:
-            st.markdown("**NOS — Legal Contravention**")
-            nos_fields["seizing_officer_ec_number"] = st.text_input("Seizing Officer EC Number", key="cap_nos_ec")
-            nos_fields["offence_committed"] = st.text_input("Offence Committed (e.g. Smuggling, Undervaluation)", key="cap_nos_offence")
-            nos_fields["act_section_breached"] = st.text_input("Section of Act Breached", key="cap_nos_section")
-            nos_fields["marks_and_numbers"] = st.text_input("Marks & Numbers (shipping marks, seal numbers)", key="cap_nos_marks")
-            nos_fields["statutory_warning_acknowledged"] = st.checkbox("Statutory warning given to offender", key="cap_nos_warning")
-            nos_fields["offender_signature_received"] = st.checkbox("Offender's signature received on NOS", key="cap_nos_signature")
-
-        vehicle_fields = {}
-        if is_vehicle:
-            st.markdown("**Vehicle Specifics**")
-            col11, col12 = st.columns(2)
-            with col11:
-                vehicle_fields["registration_number"] = st.text_input("Registration Number", key="cap_veh_reg")
-                vehicle_fields["chassis_number"] = st.text_input("Chassis Number / VIN", key="cap_veh_chassis")
-                vehicle_fields["engine_number"] = st.text_input("Engine Number", key="cap_veh_engine")
-            with col12:
-                vehicle_fields["make"] = st.text_input("Make", key="cap_veh_make")
-                vehicle_fields["model"] = st.text_input("Model", key="cap_veh_model")
-                vehicle_fields["colour"] = st.text_input("Colour", key="cap_veh_colour")
-            vehicle_fields["year_of_manufacture"] = st.number_input("Year of Manufacture", min_value=1950, max_value=2100, step=1, key="cap_veh_year")
-
-        submitted = st.form_submit_button("Capture Entry", type="primary")
-
-    if submitted:
-        if not entry_number or not goods_description or not storage_choice:
-            st.error("Entry Number, Goods Description, and a Warehouse/Pound are required. Your other entries have been kept — please fill in what's missing and submit again.")
-        else:
-            if entry_type == "RIH":
-                rih_fields["rih_number"] = nos_or_rih_number
-            else:
-                nos_fields["nos_number"] = nos_or_rih_number
-
-            entry_id = capture_entry(
-                entry_number=entry_number,
-                entry_type=entry_type,
-                port_code=user["port_code"],
-                officer_id=user["user_id"],
-                goods_description=goods_description,
-                declared_value=declared_value,
-                warehouse_id=storage_choices[storage_choice],
-                importer_name=importer_name,
-                importer_address=importer_address,
-                importer_contact=importer_contact,
-                importer_id_number=importer_id_number,
-                importer_bpn_tin=importer_bpn_tin,
-                quantity_units=quantity_units,
-                gross_weight=gross_weight or None,
-                net_weight=net_weight or None,
-                weight_unit=weight_unit,
-                rent_charge_per_day=rent_charge_per_day,
-                exchange_rate_zwg_usd=exchange_rate_zwg_usd or None,
-                expiry_date=expiry_date,
-                is_vehicle=is_vehicle,
-                rih_data=rih_fields if entry_type == "RIH" else None,
-                nos_data=nos_fields if entry_type == "NOS" else None,
-                vehicle_data=vehicle_fields if is_vehicle else None,
-            )
-            st.success(f"{entry_type} entry {entry_number} captured (ID {entry_id}). Form cleared for the next entry.")
-            clear_form_keys(form_keys)
-            st.rerun()
+            elif r["action_type"] == "e_auction":
+                with st.form(f"finalize_auction_{r['request_id']}"):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        revenue_collected_usd = st.number_input("Revenue Collected (USD)", min_value=0.0, step=0.01, key=f"revusd_{r['request_id']}")
+                    with c2:
+                        revenue_collected_zwg = st.number_input("Revenue Collected (ZWG)", min_value=0.0, step=0.01, key=f"revzwg_{r['request_id']}")
+                    buyer_details = st.text_area("Buyer Details", key=f"buyer_{r['request_id']}")
+                    receipt_number = st.text_input("Receipt Number", key=f"areceipt_{r['request_id']}")
+                    submit = st.form_submit_button("Save Sale", type="primary")
+                if submit:
+                    if not receipt_number:
+                        st.error("Receipt number is required.")
+                    else:
+                        finalize_eauction(r["request_id"], user["user_id"], revenue_collected_usd, revenue_collected_zwg, buyer_details, receipt_number)
+                        st.success("E-Auction sale finalized.")
+                        st.rerun()
 
 
 def officer_my_entries_tab(user):
@@ -585,8 +560,6 @@ def released_sold_tab(user):
         st.metric("Total Revenue (ZWG)", f"{summary['total_zwg']:,.2f}")
     with col3:
         st.metric("Entries Finalized", summary["total_finalized"])
-    if summary["missing_rate_count"]:
-        st.caption(f"⚠️ {summary['missing_rate_count']} finalized entries have no exchange rate recorded, so they're excluded from the ZWG total.")
 
     st.divider()
     rows = released_and_sold(scope_port)
@@ -941,8 +914,6 @@ def admin_statistics_tab(user):
         st.metric("Total Revenue (ZWG)", f"{rev['total_zwg']:,.2f}")
     with col3:
         st.metric("Releases Completed", rev["releases_completed"])
-    if rev["missing_rate_count"]:
-        st.caption(f"⚠️ {rev['missing_rate_count']} finalized entries have no exchange rate recorded, so they're excluded from the ZWG total.")
 
     st.divider()
     st.markdown("**Warehouse usage**")
