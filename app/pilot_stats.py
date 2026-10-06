@@ -2,7 +2,7 @@
 Statistical helpers for the Pilot Test Results page: per-RQ scores,
 Cronbach's alpha (scale reliability), and a paired t-test comparing
 RQ1 (manual process weaknesses) against RQ2 (digital system
-effectiveness) — the core evidence for "does WMS-Trak improve on the
+effectiveness) — the core evidence for "does Warehouse Management System improve on the
 manual process" in the research paper.
 """
 import pandas as pd

@@ -1,5 +1,5 @@
 """
-WMS-Trak — Streamlit entry point.
+Warehouse Management System — Streamlit entry point.
 
 Single dashboard page with horizontal, role-scoped tabs. The sidebar
 only ever shows Notifications, About the Authors, User Manual (separate
@@ -40,7 +40,7 @@ from app.warehouse_views import rih_list, seizures_list, monthly_summary
 from app.revenue import released_and_sold, revenue_summary
 from app.db import fetch_all
 
-st.set_page_config(page_title="WMS-Trak", page_icon="🏛️", layout="wide")
+st.set_page_config(page_title="Warehouse Management System", page_icon="🏛️", layout="wide")
 inject_global_css()
 
 if "user" not in st.session_state:
@@ -102,7 +102,7 @@ def login_screen():
     except Exception:
         pass
     st.markdown(
-        "<h2 style='text-align:center;color:#1A1A1A;margin-top:0.5rem;'>WMS-Trak</h2>"
+        "<h2 style='text-align:center;color:#1A1A1A;margin-top:0.5rem;'>Warehouse Management System</h2>"
         "<p style='text-align:center;color:#666;margin-bottom:1.5rem;'>Warehouse Management System</p>",
         unsafe_allow_html=True,
     )

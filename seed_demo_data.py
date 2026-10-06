@@ -1,6 +1,6 @@
 """
 One-time seeding script: generates a realistic, varied demo dataset
-for WMS-Trak — RIH and NOS entries across different goods types, ages
+for Warehouse Management System — RIH and NOS entries across different goods types, ages
 (fresh, nearing the 60-day RIH deadline, 60-89 days overdue, 90+ days
 overdue), plus a handful already finalized (Released/Sold/Destroyed/
 Appropriated) so Statistics and Released & Sold show real numbers.

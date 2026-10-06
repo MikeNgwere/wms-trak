@@ -6,7 +6,7 @@ import streamlit as st
 
 from app.theme import render_sidebar, inject_global_css
 
-st.set_page_config(page_title="Research Paper — WMS-Trak", layout="wide")
+st.set_page_config(page_title="Research Paper — Warehouse Management System", layout="wide")
 inject_global_css()
 
 user = st.session_state.get("user")
@@ -53,7 +53,7 @@ if chapter == "Chapter 1: Introduction":
         "only in a paper file and nowhere else."
     )
     st.write(
-        "This research paper sets out the development of WMS-Trak — a digital tool built to sit alongside "
+        "This research paper sets out the development of a Warehouse Management System — a digital tool built to sit alongside "
         "ASYCUDA World, not to replace it, and to do the one thing the paper register cannot: watch every RIH "
         "and NOS entry continuously, flag it the moment it crosses its legal deadline, and carry it through a "
         "proper, auditable approval chain to its final disposition — release, forfeiture, destruction, or "
@@ -90,7 +90,7 @@ if chapter == "Chapter 1: Introduction":
     st.subheader("1.3 Research Objectives")
     st.markdown("**1.3.1 Main Objective**")
     st.write(
-        "To design, develop, and pilot-test a digital Warehouse Management System (WMS-Trak) that gives every "
+        "To design, develop, and pilot-test a digital Warehouse Management System that gives every "
         "RIH and NOS entry a running clock against its correct statutory deadline, and carries it through a "
         "proper Officer–Supervisor–Manager sign-off chain to final disposition — operating alongside ASYCUDA "
         "World, not in place of it."
@@ -119,7 +119,7 @@ if chapter == "Chapter 1: Introduction":
     st.write("Three questions sit behind this study, each explored through five questionnaire items put directly to pilot officers:")
     st.markdown(
         "- **RQ1:** What did the manual, paper-based process actually get wrong, in the experience of officers who used it every day?\n"
-        "- **RQ2:** Does WMS-Trak genuinely fix those problems, or does it just move them somewhere else?\n"
+        "- **RQ2:** Does the system genuinely fix those problems, or does it just move them somewhere else?\n"
         "- **RQ3:** Is the system something an officer would actually want to use, and does it show any real benefit to compliance and revenue outcomes?"
     )
 
@@ -150,7 +150,7 @@ if chapter == "Chapter 1: Introduction":
         "This study is confined to RIH and NOS goods, piloted at Forbes Border Post. Removal in Bond and "
         "Removal in Transit were part of our original scope, but an early review found ASYCUDA World already "
         "tracks those movements adequately — it was the state warehouse and seizure side, still running on "
-        "paper, that genuinely needed the work. WMS-Trak is built to sit alongside ASYCUDA World as a control "
+        "paper, that genuinely needed the work. The system is built to sit alongside ASYCUDA World as a control "
         "layer, not to touch or replace it."
     )
 
@@ -183,7 +183,7 @@ elif chapter == "Chapter 2: Literature Review":
 
     st.subheader("2.2 Legal and Regulatory Framework")
     st.write(
-        "Every business rule in WMS-Trak traces back to a specific provision, not a guess. Section 39(1)(b) "
+        "Every business rule in the system traces back to a specific provision, not a guess. Section 39(1)(b) "
         "of the Customs and Excise Act [Chapter 23:02] gives an importer ten days from importation to enter "
         "goods sitting in a transit shed, failing which they are treated as abandoned and moved to the State "
         "Warehouse. From there, section 39(2) gives a further period — currently sixty days, not the three "
@@ -234,7 +234,7 @@ elif chapter == "Chapter 2: Literature Review":
         "shelf, counting days against a bond period or an appeal window. That is a genuinely different job, "
         "and trying to bolt it onto a platform built for something else is neither quick nor necessary. What "
         "is needed instead is a smaller, purpose-built tool that does exactly this one job well, and hands "
-        "off to ASYCUDA World for everything it already does properly. WMS-Trak was built with that division "
+        "off to ASYCUDA World for everything it already does properly. The system was built with that division "
         "of labour deliberately in mind — it does not touch declaration processing, and it does not try to."
     )
 
@@ -246,7 +246,7 @@ elif chapter == "Chapter 2: Literature Review":
         "threshold, and against warehouse occupancy); approval (a request moves through Officer, Supervisor, "
         "and Manager, the same chain of authority a paper sign-off would follow); and finalisation (the "
         "Officer closes out the file with the actual payment, representative detail, destruction record, or "
-        "sale proceeds — the step that genuinely ends the file and locks in the audit trail). WMS-Trak's "
+        "sale proceeds — the step that genuinely ends the file and locks in the audit trail). The system's "
         "design follows this four-stage shape deliberately, so that the system mirrors how the work is "
         "already done rather than forcing officers to learn an unfamiliar process."
     )
@@ -307,7 +307,7 @@ else:
 
     st.subheader("3.5 System Architecture and Development Tools")
     st.write(
-        "WMS-Trak runs on Python 3.10/3.11 with Streamlit as the web framework, and PostgreSQL — hosted on "
+        "The system runs on Python 3.10/3.11 with Streamlit as the web framework, and PostgreSQL — hosted on "
         "Supabase, via its Session Pooler connection for reliable access from cloud environments — as the "
         "database, with psycopg2 handling database access through a connection pool for performance. The "
         "code lives in a private GitHub repository and deploys automatically to Streamlit Community Cloud on "

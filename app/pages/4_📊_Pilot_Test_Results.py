@@ -19,7 +19,7 @@ from app.pilot_stats import (
     paired_ttest, question_mean_scores, overall_response_distribution, rq_question_keys,
 )
 
-st.set_page_config(page_title="Pilot Test Results — WMS-Trak", layout="wide")
+st.set_page_config(page_title="Pilot Test Results — Warehouse Management System", layout="wide")
 inject_global_css()
 
 user = st.session_state.get("user")
@@ -97,12 +97,12 @@ for col, rq_title in zip(alpha_cols, QUESTIONS):
 st.divider()
 
 # ---------------- Key hypothesis test: RQ2 vs RQ1 ----------------
-st.markdown("## Statistical Test: Does WMS-Trak Improve on the Manual Process?")
+st.markdown("## Statistical Test: Does the System Improve on the Manual Process?")
 st.write(
     "A paired t-test compares each respondent's average agreement with "
     "**RQ1 (manual process weaknesses)** against their average agreement "
     "with **RQ2 (digital system effectiveness)**. A significantly higher "
-    "RQ2 score (p < 0.05) supports the conclusion that WMS-Trak addresses "
+    "RQ2 score (p < 0.05) supports the conclusion that the system addresses "
     "the weaknesses identified in the manual process."
 )
 rq1_scores = rq_means["RQ1 — Manual Process Weaknesses"]
@@ -123,7 +123,7 @@ if p_value < 0.05:
         "The difference is statistically significant (p < 0.05) — respondents "
         "rated the manual process's weaknesses and the digital system's "
         "effectiveness as meaningfully different, supporting the case that "
-        "WMS-Trak addresses the identified problems."
+        "The system addresses the identified problems."
     )
 else:
     st.warning(

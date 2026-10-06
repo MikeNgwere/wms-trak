@@ -4,8 +4,8 @@ Pilot-test questionnaire: 15 Likert-scale (1-5) items grouped under
 Pilot Test Results page. One response per person — resubmitting
 updates the existing row rather than creating a duplicate.
 
-RQ1 (Q1-Q5):  Manual process weaknesses (baseline, pre-WMS-Trak)
-RQ2 (Q6-Q10): Digital system effectiveness (WMS-Trak)
+RQ1 (Q1-Q5):  Manual process weaknesses (baseline, pre-system)
+RQ2 (Q6-Q10): Digital system effectiveness
 RQ3 (Q11-Q15): Usability & perceived impact
 """
 from app.db import fetch_all, fetch_one, execute
@@ -19,18 +19,18 @@ QUESTIONS = {
         "q5": "Errors or lost records were common with the manual/paper-based process.",
     },
     "RQ2 — Digital System Effectiveness": {
-        "q6": "WMS-Trak makes it easier to track RIH/NOS goods and their bond/appeal deadlines.",
+        "q6": "The system makes it easier to track RIH/NOS goods and their bond/appeal deadlines.",
         "q7": "The system improves accuracy in recording and reconciling warehouse goods.",
-        "q8": "WMS-Trak helps identify overstayed or flagged goods faster than the manual process.",
+        "q8": "The system helps identify overstayed or flagged goods faster than the manual process.",
         "q9": "The Officer→Supervisor→Manager approval workflow improves accountability compared to manual sign-offs.",
         "q10": "The system provides a more reliable audit trail than paper records.",
     },
     "RQ3 — Usability & Perceived Impact": {
-        "q11": "WMS-Trak is easy to navigate and use in my daily work.",
+        "q11": "The system is easy to navigate and use in my daily work.",
         "q12": "I am confident using the system without needing frequent assistance.",
         "q13": "The system positively impacts revenue collection and reporting accuracy.",
-        "q14": "I would recommend wider rollout of WMS-Trak to other stations.",
-        "q15": "Overall, WMS-Trak is an improvement over the manual system.",
+        "q14": "I would recommend wider rollout of the system to other stations.",
+        "q15": "Overall, the system is an improvement over the manual system.",
     },
 }
 

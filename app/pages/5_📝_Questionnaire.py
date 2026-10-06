@@ -11,7 +11,7 @@ import streamlit as st
 from app.theme import render_sidebar, inject_global_css
 from app.questionnaire import QUESTIONS, submit_response, response_count, get_response_for_user
 
-st.set_page_config(page_title="Questionnaire — WMS-Trak", layout="wide")
+st.set_page_config(page_title="Questionnaire — Warehouse Management System", layout="wide")
 inject_global_css()
 
 user = st.session_state.get("user")
@@ -27,7 +27,7 @@ if existing:
     st.info("You've already submitted a response. Editing and saving below will update it.")
 else:
     st.write(
-        "Thank you for testing WMS-Trak. Please rate each statement below on a "
+        "Thank you for testing the Warehouse Management System. Please rate each statement below on a "
         "scale of 1 (Strongly Disagree) to 5 (Strongly Agree), comparing your "
         "experience with the previous manual process against the new system "
         "where relevant."

@@ -13,7 +13,7 @@ from app.messages import send_message, get_messages_for
 from app.db import fetch_all
 from app.theme import render_sidebar, inject_global_css
 
-st.set_page_config(page_title="Notifications — WMS-Trak", layout="wide")
+st.set_page_config(page_title="Notifications — Warehouse Management System", layout="wide")
 inject_global_css()
 
 user = st.session_state.get("user")

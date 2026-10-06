@@ -1,5 +1,5 @@
 """
-User Manual — how to navigate and use WMS-Trak, organised by role.
+User Manual — how to navigate and use Warehouse Management System, organised by role.
 """
 import sys
 import os
@@ -8,7 +8,7 @@ import streamlit as st
 
 from app.theme import render_sidebar, inject_global_css
 
-st.set_page_config(page_title="User Manual — WMS-Trak", layout="wide")
+st.set_page_config(page_title="User Manual — Warehouse Management System", layout="wide")
 inject_global_css()
 
 user = st.session_state.get("user")
@@ -17,7 +17,7 @@ if not user:
     st.stop()
 render_sidebar(user)
 
-st.title("User Manual — How to Use WMS-Trak")
+st.title("User Manual — How to Use Warehouse Management System")
 
 st.markdown("## Navigation")
 st.write(

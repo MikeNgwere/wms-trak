@@ -1,5 +1,5 @@
 -- =========================================================
--- WMS-Trak: State Warehouse, Bond & Transit Tracking System
+-- Warehouse Management System: State Warehouse, Bond & Transit Tracking System
 -- PostgreSQL schema (Supabase-compatible)
 -- =========================================================
 
