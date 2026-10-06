@@ -13,8 +13,6 @@ ZIMRA_GREEN_DARK = "#3d8b40"
 
 
 def inject_global_css():
-    from app.session_persist import persist_session
-    persist_session()
     st.markdown(
         f"""
         <style>
