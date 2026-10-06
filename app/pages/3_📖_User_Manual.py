@@ -77,11 +77,73 @@ st.write(
 )
 st.markdown(
     "- The document is filled automatically from the entry's saved details and "
-    "carries the serial number recorded in the system, the ZIMRA logo, and a "
-    "round **WMS** stamp showing the date the entry was captured.\n"
+    "carries its **RIH No.** or **NOS No.** as recorded in the system, the ZIMRA logo, a "
+    "round **WMS** stamp showing the date the entry was captured, and a **QR code** "
+    "(top left) for verification.\n"
     "- Choose **Print** to send it to a printer, or **Download PDF** to save it.\n"
     "- If you correct an entry (Admin → Entry Correction), view the document "
     "again to get the updated version."
+)
+
+st.divider()
+
+st.markdown("## Verifying a Document (QR Code)")
+st.write(
+    "Every RIH, NOS, closing document and auction notice printed from the system carries a "
+    "QR code marked **Scan to verify**. Anyone — including the importer or a third party — "
+    "can scan it with a phone camera. No login is needed."
+)
+st.markdown(
+    "- The **Verify Document** page opens and shows **GENUINE**, with the document type and "
+    "number, station, date, goods and current status. The name of the person the document was "
+    "issued to is shown as initials only.\n"
+    "- Compare those details with the paper. If anything differs, or the page says "
+    "**NOT FOUND**, do not accept the document and report it to the nearest ZIMRA office.\n"
+    "- If a QR code is damaged, open **Verify Document** from the sidebar and type the document "
+    "type and number instead."
+)
+
+st.divider()
+
+st.markdown("## Closing Documents")
+st.write(
+    "When an action has been **finalized**, the system can print the matching closing "
+    "document. Open **Released & Sold**, and under the table use **Open closing document**: "
+    "choose the entry, switch on the view, then **Print** or **Download PDF**."
+)
+st.markdown(
+    "- **Release Receipt** — goods released to the owner: duty, additional duty, rent "
+    "(days × daily rate), rent paid, total received, Y-number and clearance details, with "
+    "signature lines for the person receiving the goods and the releasing Officer.\n"
+    "- **Forfeiture / Appropriation Record** — the receiving Ministry, the request letter "
+    "reference, the representative's name, ID and occupation, and what was handed over.\n"
+    "- **Certificate of Destruction** — date and place, reason, Port Health Officer and "
+    "approval reference, and who was present.\n"
+    "- **E-Auction Sale Record** — revenue collected, buyer details, the auction receipt "
+    "number and date of sale.\n"
+    "- Each one also shows who requested, reviewed, approved and finalized the action, with "
+    "dates, plus the WMS stamp and a verification QR code."
+)
+
+st.divider()
+
+st.markdown("## E-Auctions and the Gazette Notice")
+st.write(
+    "Section 39(3) of the Customs and Excise Act requires **at least one month's notice in "
+    "the Gazette** before RIH goods are sold by public auction. The system tracks this for you."
+)
+st.markdown(
+    "1. In **Finalize Action**, an e-auction card now starts with a **Gazette notice** panel.\n"
+    "2. Enter the **Gazette date**, the Gazette reference, the **auction date** and the platform. "
+    "The system will not accept an auction date earlier than one calendar month after the "
+    "Gazette date.\n"
+    "3. Switch on **View / print Notice of E-Auction** to print or download the notice.\n"
+    "4. The sale **cannot be finalized** until the notice period is complete — the panel shows "
+    "how many days are left.\n"
+    "5. Once it shows **Ready**, enter the revenue, buyer details and receipt number as usual.\n"
+    "6. On your **Overview**, the **E-Auction Gazette Notice Tracking** table lists every "
+    "e-auction awaiting finalization as *No Gazette notice*, *Waiting (days left)* or *Ready to sell*.\n"
+    "- For **NOS** goods (forfeited to the State under section 193), the Gazette check does not apply."
 )
 
 st.divider()
@@ -117,9 +179,11 @@ with st.expander("👮 Officer", expanded=(user["role_name"] == "Officer")):
         "rate × days in the warehouse); Forfeiture asks for the receiving "
         "representative's details; Destruction asks for the date, place, and "
         "stakeholders present; E-Auction asks for revenue collected and buyer "
-        "details. All require a receipt number where applicable.\n"
+        "details. For an RIH e-auction, the Gazette notice must be recorded and the "
+        "one-month period completed first. All require a receipt number where applicable.\n"
         "- **Released & Sold**: see everything that's left active tracking at your "
-        "station, plus running revenue totals.\n"
+        "station, plus running revenue totals, and print the closing document for "
+        "any finalized entry.\n"
         "- **Stocktake Reports**: results of the latest stocktakes at your station "
         "and the monthly report (see *Stocktake and Ratings* below). You do not "
         "count stock yourself."
