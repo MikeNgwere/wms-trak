@@ -2,6 +2,10 @@
 Research Paper — Chapters 1-3 (Introduction, Literature Review,
 Methodology), written for the project, natively inside the app.
 """
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 import streamlit as st
 
 from app.theme import render_sidebar, inject_global_css
