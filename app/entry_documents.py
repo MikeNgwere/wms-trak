@@ -145,7 +145,11 @@ def _header(c, title, serial_label, serial, logo, left_note=None):
     c.setFont("Times-Bold", 11)
     c.drawRightString(RM - 52, H - 72, serial_label)
     c.setFillColorRGB(0.75, 0.1, 0.1)
-    c.setFont("Helvetica-Bold", 15)
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+    fs = 15
+    while stringWidth(serial, "Helvetica-Bold", fs) > (W - 24) - (RM - 48) and fs > 8:
+        fs -= 0.5
+    c.setFont("Helvetica-Bold", fs)
     c.drawString(RM - 48, H - 73, serial)
     c.setFillColorRGB(*FORM)
     c.setFont("Times-Bold", 14)
@@ -471,13 +475,13 @@ def verify_url(d):
     return f"{_base_url()}/Verify_Document?t={kind}&no={quote(number)}"
 
 
-def _draw_qr(c, d, x=LM, y=None, size=62):
-    """QR code (top-left, beside the logo) that opens the public verification page."""
+def _draw_qr_url(c, url, x=LM, y=None, size=62):
+    """QR code (top-left, beside the logo) that opens the given verification URL."""
     from reportlab.graphics.barcode.qr import QrCodeWidget
     from reportlab.graphics.shapes import Drawing
     from reportlab.graphics import renderPDF
     y = (H - 110) if y is None else y
-    w = QrCodeWidget(verify_url(d), barLevel="M")
+    w = QrCodeWidget(url, barLevel="M")
     x0, y0, x1, y1 = w.getBounds()
     dr = Drawing(size, size, transform=[size / (x1 - x0), 0, 0, size / (y1 - y0), 0, 0])
     dr.add(w)
@@ -485,6 +489,10 @@ def _draw_qr(c, d, x=LM, y=None, size=62):
     c.setFillColorRGB(*FORM)
     c.setFont("Times-Italic", 6.5)
     c.drawCentredString(x + size / 2, y - 8, "Scan to verify")
+
+
+def _draw_qr(c, d, x=LM, y=None, size=62):
+    _draw_qr_url(c, verify_url(d), x, y, size)
 
 
 def build_entry_pdf(d):

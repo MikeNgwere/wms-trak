@@ -26,7 +26,9 @@ from app.admin import (
     list_all_messages, revenue_stats, warehouse_usage_stats, days_until_expiry_report,
     get_user_by_id, update_user,
 )
-from app.entry_documents import render_entry_document, render_entry_document_for_row, entry_document_picker
+from app.entry_documents import render_entry_document, render_entry_document_for_row, entry_document_picker, _resolve_entry_id
+from app.closing_documents import closing_document_picker
+from app.auction_notice import auction_notice_panel, auction_tracking_rows
 from app.stocktake import stocktake_tab
 from app.stocktake_reports import stocktake_reports_tab, render_my_rating
 from app.bond_engine import entries_nearing_expiry
@@ -478,6 +480,7 @@ def officer_finalize_tab(user):
                         st.rerun()
 
             elif r["action_type"] == "e_auction":
+                notice_ok = auction_notice_panel(user, r["entry_id"] if r.get("entry_id") else _resolve_entry_id(r), key=f"auc_{r['request_id']}")
                 with st.form(f"finalize_auction_{r['request_id']}"):
                     c1, c2 = st.columns(2)
                     with c1:
@@ -488,7 +491,9 @@ def officer_finalize_tab(user):
                     receipt_number = st.text_input("Receipt Number", key=f"areceipt_{r['request_id']}")
                     submit = st.form_submit_button("Save Sale", type="primary")
                 if submit:
-                    if not receipt_number:
+                    if not notice_ok:
+                        st.error("The sale cannot be finalized until the Gazette notice period is complete.")
+                    elif not receipt_number:
                         st.error("Receipt number is required.")
                     else:
                         finalize_eauction(r["request_id"], user["user_id"], revenue_collected_usd, revenue_collected_zwg, buyer_details, receipt_number)
@@ -622,6 +627,7 @@ def released_sold_tab(user):
     if rows:
         st.dataframe(rows, use_container_width=True)
         entry_document_picker(rows, key="rel")
+        closing_document_picker(rows, key="rel")
     else:
         st.info("No released or sold goods yet.")
 
@@ -1094,6 +1100,16 @@ def dashboard_overview(user):
         entry_document_picker(perishable_rows, key="dash_pr")
     else:
         st.info("No perishable goods approaching expiry.")
+
+    try:
+        pend = pending_officer_finalization(user["port_code"]) if user["role_name"] in ("Officer", "Supervisor") else []
+        track = auction_tracking_rows(pend)
+    except Exception:
+        track = []
+    if track:
+        st.subheader("E-Auction Gazette Notice Tracking")
+        st.caption("Section 39(3): at least one month's Gazette notice before an RIH sale")
+        st.dataframe(track, use_container_width=True, hide_index=True)
 
     st.divider()
     render_my_rating(user)
