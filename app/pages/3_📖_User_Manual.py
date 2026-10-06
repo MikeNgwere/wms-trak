@@ -25,15 +25,34 @@ st.write(
     "role you're logged in as:"
 )
 st.markdown(
-    "- **main** — your Dashboard, with role-specific tabs laid out horizontally\n"
-    "- **About the Authors** — project information and the research group\n"
+    "- **main** — your Dashboard\n"
     "- **Notifications** — system updates and chat-style messages\n"
+    "- **About the Authors** — project information and the research group\n"
+    "- **Research Paper** — the research behind the system\n"
     "- **User Manual** — this page\n"
+    "- **Pilot Test Results** — results of the pilot questionnaire\n"
     "- **Account dropdown** (bottom of sidebar) — your profile, phone number, and Log out"
 )
 st.write(
-    "Once logged in, you stay logged in even if you refresh the page — you "
-    "only get signed out by clicking **Log out**."
+    "Once logged in, you stay logged in even if you refresh the page or move "
+    "between pages — you only get signed out by clicking **Log out**."
+)
+
+st.markdown("### The Dashboard buttons")
+st.write(
+    "At the top of your Dashboard is a row of **green buttons**, one for each "
+    "screen available to your role. The bar stays fixed at the top while you "
+    "scroll, so you can switch screens at any time."
+)
+st.markdown(
+    "- The **selected** button is a deeper green with an **orange line** under it.\n"
+    "- Hovering over a button shows an orange line under it.\n"
+    "- If the buttons do not all fit on your screen, scroll the bar sideways: use "
+    "the mouse wheel while pointing at it, click and drag it, swipe on a "
+    "touchscreen, or use the grey scroll bar beneath it.\n"
+    "- **Overview** is the first button. It shows entries whose bond/appeal "
+    "deadline is approaching or overdue, perishable goods nearing physical expiry, "
+    "and **Your Stocktake Rating**."
 )
 
 st.divider()
@@ -48,18 +67,39 @@ st.write(
 
 st.divider()
 
+st.markdown("## Printing and Downloading RIH and NOS Documents")
+st.write(
+    "Wherever the system shows a list of entries — My Captured Entries, Warehouses "
+    "& Pounds, Request Action, Finalize Action, Released & Sold, the Overview "
+    "tables, Warehouse Overview and the Admin screens — there is an option to "
+    "**view the RIH (Receipt for Items Held) or NOS (Notice of Seizure)** for "
+    "that entry."
+)
+st.markdown(
+    "- The document is filled automatically from the entry's saved details and "
+    "carries the serial number recorded in the system, the ZIMRA logo, and a "
+    "round **WMS** stamp showing the date the entry was captured.\n"
+    "- Choose **Print** to send it to a printer, or **Download PDF** to save it.\n"
+    "- If you correct an entry (Admin → Entry Correction), view the document "
+    "again to get the updated version."
+)
+
+st.divider()
+
 st.markdown("## Role-by-Role Guide")
 
 with st.expander("👮 Officer", expanded=(user["role_name"] == "Officer")):
     st.markdown(
+        "- **Overview**: deadlines, perishable-expiry warnings and your own "
+        "stocktake rating.\n"
         "- **Capture Entry**: record a new RIH or NOS entry. Fill in importer/owner "
         "details, goods description, weight (with a kg/tonnes/litres/grams unit "
         "dropdown), rent charge per day, the ZWG-to-USD exchange rate, an expiry "
         "date if applicable, and (for NOS) seizure/legal details, or (for vehicles) "
         "vehicle specifics. Assign it to a Warehouse (A–E) or, if it's a vehicle, a "
         "Pound (A–E).\n"
-        "- **My Captured Entries**: see everything you've personally captured, and "
-        "view full detail on any of them.\n"
+        "- **My Captured Entries**: see everything you've personally captured, view "
+        "full detail on any of them, and print or download its RIH/NOS.\n"
         "- **Warehouses & Pounds**: check occupancy at your station, mark a "
         "warehouse/pound Full or Not Full, and see what's currently stored in each.\n"
         "- **Request Action**: choose one of four pathways for an active entry:\n"
@@ -79,32 +119,47 @@ with st.expander("👮 Officer", expanded=(user["role_name"] == "Officer")):
         "stakeholders present; E-Auction asks for revenue collected and buyer "
         "details. All require a receipt number where applicable.\n"
         "- **Released & Sold**: see everything that's left active tracking at your "
-        "station, plus running revenue totals."
+        "station, plus running revenue totals.\n"
+        "- **Stocktake Reports**: results of the latest stocktakes at your station "
+        "and the monthly report (see *Stocktake and Ratings* below). You do not "
+        "count stock yourself."
     )
 
 with st.expander("🧭 Supervisor", expanded=(user["role_name"] == "Supervisor")):
     st.markdown(
+        "- **Overview**: deadlines, perishable-expiry warnings and your own "
+        "stocktake rating.\n"
         "- **Review Requests**: Officer-submitted requests at your station land "
         "here first, regardless of action type. Approve to forward to the "
         "Manager, or reject with a reason.\n"
         "- **Warehouse Overview**: RIH list, Seizures list, and a monthly summary "
         "for your station — filterable by warehouse and date range.\n"
         "- **Released & Sold**: everything finalized at your station, with revenue "
-        "totals."
+        "totals.\n"
+        "- **Stocktake Reports**: stocktake results and monthly reports for your "
+        "station, with the ratings of the officers at your station and your own "
+        "rating for the goods you approved."
     )
 
 with st.expander("✅ Manager", expanded=(user["role_name"] == "Manager")):
     st.markdown(
+        "- **Overview**: deadlines, perishable-expiry warnings and your own "
+        "stocktake rating.\n"
         "- **Final Approvals**: requests already approved by a Supervisor land "
         "here, from all ports. Approving here grants **permission** — the entry "
         "moves to 'awaiting finalization,' but stays in active tracking until the "
         "Officer completes the finalization step.\n"
         "- **Warehouse Overview**: same as Supervisor's, but across all ports.\n"
-        "- **Released & Sold**: system-wide revenue totals and finalized entries."
+        "- **Released & Sold**: system-wide revenue totals and finalized entries.\n"
+        "- **Stocktake Reports**: results and monthly reports for all stations, "
+        "with the ratings of every supervisor and officer, and your own rating for "
+        "the goods you approved."
     )
 
 with st.expander("🛠️ Admin", expanded=(user["role_name"] == "Admin")):
     st.markdown(
+        "- **Overview**: deadlines and perishable-expiry warnings.\n"
+        "- **Profile Requests**: review requests for new profiles.\n"
         "- **Users**: create new accounts (Officer, Supervisor, Manager, Admin), "
         "deactivate/reactivate accounts, reset passwords, or delete a user.\n"
         "- **Entry Correction**: search for an entry and fix mistakes (entry number, "
@@ -115,8 +170,63 @@ with st.expander("🛠️ Admin", expanded=(user["role_name"] == "Admin")):
         "or posted in error.\n"
         "- **Statistics**: total revenue collected, warehouse usage across all "
         "stations, and RIH entries sorted by days remaining until expiry.\n"
-        "- **Warehouse Overview**: same filterable view available to Manager."
+        "- **Warehouse Overview**: same filterable view available to Manager.\n"
+        "- **Stocktake**: the audit count. Only the Admin counts stock (see below).\n"
+        "- **Stocktake Reports**: results and ratings for everyone."
     )
+
+st.divider()
+
+st.markdown("## Stocktake and Ratings")
+st.write(
+    "A stocktake is an **audit**: the physical goods in a warehouse are checked "
+    "against what the system says should be there. Because Officers, Supervisors "
+    "and Managers are the people being audited, **only the Admin carries out "
+    "stocktakes**, and may do so at any time. A stocktake is expected for every "
+    "warehouse **once a month**."
+)
+
+st.markdown("### How the Admin counts")
+st.markdown(
+    "1. Open **Stocktake**. The **progress table** at the top lists every "
+    "warehouse for the current month as **Completed** (with the date and score), "
+    "**In progress**, or **Due for Stocktake**.\n"
+    "2. Pick a warehouse and press **Start a new stocktake**. The system lists "
+    "every entry it expects to find there.\n"
+    "3. Tick each item that is physically present. Anything left unticked is "
+    "recorded as **missing**.\n"
+    "4. Record any goods found that are **not on the system list** as extra items.\n"
+    "5. Press **Close stocktake and score it**. The score and a PDF report are produced."
+)
+
+st.markdown("### How it is scored")
+st.write(
+    "Each stocktake is marked **out of 100**: items present divided by "
+    "(items expected + extra items found), times 100."
+)
+st.markdown(
+    "- **95 or above — Pass.** 100 is the target and a variance of up to 5% is accepted.\n"
+    "- **Below 95 — Flagged for potential fraud.** Every missing entry is flagged "
+    "together with the **responsible officer**, and the supervisor and manager "
+    "who approved it. They are notified in **Notifications**."
+)
+
+st.markdown("### What everyone else sees")
+st.markdown(
+    "- **Stocktake Reports** tab: recent stocktake results with downloadable "
+    "reports, and a **monthly report**. Completed months are available after "
+    "month-end; the current month can be requested at any time as *month to date*.\n"
+    "- Each report shows the score, revenue collected, goods in stock, and RIH and "
+    "NOS broken down by category (for example Vehicles, Drinks, Clothing, "
+    "Perishables, depending on what is in the warehouse), plus flagged entries and "
+    "the officers responsible.\n"
+    "- **Your Stocktake Rating** on the Overview shows only your own score. If you "
+    "did not enter goods into the warehouse, it says so instead of showing a score — "
+    "you can still open the station's reports.\n"
+    "- **Who sees whose rating:** an Officer sees their own; a Supervisor sees the "
+    "officers at their station and their own rating for goods they approved; a "
+    "Manager sees all supervisors and officers; the Admin sees everyone."
+)
 
 st.divider()
 
@@ -126,7 +236,7 @@ st.write(
 )
 st.markdown(
     "- **System Notifications**: automatic updates — entries awaiting your action, "
-    "approvals, rejections, flags. Mark them read as you go.\n"
+    "approvals, rejections, stocktake flags. Mark them read as you go.\n"
     "- **Messages**: a chat-style feed for human communication — send a message to "
     "everyone (ZIMRA-wide announcement), to a specific role, or to one person."
 )
