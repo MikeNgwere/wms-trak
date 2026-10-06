@@ -26,6 +26,7 @@ from app.admin import (
     get_user_by_id, update_user,
 )
 from app.entry_documents import render_entry_document, render_entry_document_for_row, entry_document_picker
+from app.stocktake import stocktake_tab
 from app.bond_engine import entries_nearing_expiry
 from app.theme import render_sidebar, inject_global_css, clear_form_keys
 from app.entries import capture_entry, entries_captured_by, active_entries_for_port, get_entry_full_detail, perishable_goods_nearing_expiry
@@ -1026,7 +1027,7 @@ def role_dashboard():
     if user["role_name"] == "Officer":
         tabs = st.tabs([
             "Capture Entry", "My Captured Entries", "Warehouses & Pounds",
-            "Request Action", "Finalize Action", "Released & Sold",
+            "Request Action", "Finalize Action", "Released & Sold", "Stocktake",
         ])
         with tabs[0]:
             officer_capture_tab(user)
@@ -1040,29 +1041,35 @@ def role_dashboard():
             officer_finalize_tab(user)
         with tabs[5]:
             released_sold_tab(user)
+        with tabs[6]:
+            stocktake_tab(user)
 
     elif user["role_name"] == "Supervisor":
-        tabs = st.tabs(["Review Requests", "Warehouse Overview", "Released & Sold"])
+        tabs = st.tabs(["Review Requests", "Warehouse Overview", "Released & Sold", "Stocktake"])
         with tabs[0]:
             supervisor_review_tab(user)
         with tabs[1]:
             warehouse_overview_tab(user)
         with tabs[2]:
             released_sold_tab(user)
+        with tabs[3]:
+            stocktake_tab(user)
 
     elif user["role_name"] == "Manager":
-        tabs = st.tabs(["Final Approvals", "Warehouse Overview", "Released & Sold"])
+        tabs = st.tabs(["Final Approvals", "Warehouse Overview", "Released & Sold", "Stocktake"])
         with tabs[0]:
             manager_approvals_tab(user)
         with tabs[1]:
             warehouse_overview_tab(user)
         with tabs[2]:
             released_sold_tab(user)
+        with tabs[3]:
+            stocktake_tab(user)
 
     elif user["role_name"] == "Admin":
         tabs = st.tabs([
             "Profile Requests", "Users", "Entry Correction", "Audit Trail",
-            "Messages", "Statistics", "Warehouse Overview",
+            "Messages", "Statistics", "Warehouse Overview", "Stocktake",
         ])
         with tabs[0]:
             admin_profile_requests_tab(user)
@@ -1078,6 +1085,8 @@ def role_dashboard():
             admin_statistics_tab(user)
         with tabs[6]:
             warehouse_overview_tab(user)
+        with tabs[7]:
+            stocktake_tab(user)
 
     else:
         st.info("No dashboard tabs configured for this role yet.")
