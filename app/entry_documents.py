@@ -304,7 +304,7 @@ def _qty(d):
 
 # ---------- RIH ----------
 def _draw_rih(c, d, logo):
-    _header(c, "RECEIPT FOR ITEMS HELD", "Serial No.", _s(d.get("rih_number")) or _s(d.get("entry_number")), logo)
+    _header(c, "RECEIPT FOR ITEMS HELD", "RIH No.", _s(d.get("rih_number")) or _s(d.get("entry_number")), logo)
     y = H - 178
     x_mid = 330
     _field(c, LM, y, "To (Surname):", _s(d.get("importer_name")), x_mid - 15)
@@ -383,7 +383,7 @@ def _draw_rih(c, d, logo):
 
 # ---------- NOS ----------
 def _draw_nos(c, d, logo):
-    _header(c, "NOTICE OF SEIZURE", "No.", _s(d.get("nos_number")) or _s(d.get("entry_number")), logo)
+    _header(c, "NOTICE OF SEIZURE", "NOS No.", _s(d.get("nos_number")) or _s(d.get("entry_number")), logo)
     y = H - 168
     c.setFont("Times-Roman", 8.3)
     c.setFillColorRGB(*FORM)
@@ -448,6 +448,45 @@ def _draw_nos(c, d, logo):
         ty = _para(c, b, LM, ty, RM - LM, size=8.5, lead=10.5) - 5
 
 
+# ---------- QR verification ----------
+_DEFAULT_BASE_URL = "https://wms-trak-rtp3fesrnnoa4jjy7wrxcz.streamlit.app"
+
+
+def _base_url():
+    """Public address of the deployed app (set APP_BASE_URL in secrets or the environment to change it)."""
+    url = os.environ.get("APP_BASE_URL")
+    if not url:
+        try:
+            import streamlit as st
+            url = st.secrets.get("APP_BASE_URL")
+        except Exception:
+            url = None
+    return (url or _DEFAULT_BASE_URL).rstrip("/")
+
+
+def verify_url(d):
+    from urllib.parse import quote
+    kind = "RIH" if d.get("entry_type") == "RIH" else "NOS"
+    number = _s(d.get("rih_number") if kind == "RIH" else d.get("nos_number")) or _s(d.get("entry_number"))
+    return f"{_base_url()}/Verify_Document?t={kind}&no={quote(number)}"
+
+
+def _draw_qr(c, d, x=LM, y=None, size=62):
+    """QR code (top-left, beside the logo) that opens the public verification page."""
+    from reportlab.graphics.barcode.qr import QrCodeWidget
+    from reportlab.graphics.shapes import Drawing
+    from reportlab.graphics import renderPDF
+    y = (H - 110) if y is None else y
+    w = QrCodeWidget(verify_url(d), barLevel="M")
+    x0, y0, x1, y1 = w.getBounds()
+    dr = Drawing(size, size, transform=[size / (x1 - x0), 0, 0, size / (y1 - y0), 0, 0])
+    dr.add(w)
+    renderPDF.draw(dr, c, x, y)
+    c.setFillColorRGB(*FORM)
+    c.setFont("Times-Italic", 6.5)
+    c.drawCentredString(x + size / 2, y - 8, "Scan to verify")
+
+
 def build_entry_pdf(d):
     from reportlab.pdfgen import canvas
     buf = BytesIO()
@@ -460,6 +499,7 @@ def build_entry_pdf(d):
         _draw_rih(c, d, logo)
     else:
         _draw_nos(c, d, logo)
+    _draw_qr(c, d)
     c.setFont("Times-Italic", 7)
     c.setFillColorRGB(0.5, 0.5, 0.5)
     c.drawCentredString(W / 2, 12, f"System-generated {datetime.now().strftime('%d/%m/%Y %H:%M')} · Entry {d.get('entry_number', '')}")
