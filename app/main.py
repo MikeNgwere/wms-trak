@@ -102,7 +102,7 @@ def login_screen():
     except Exception:
         pass
     st.markdown(
-        "<h2 style='text-align:center;color:#1A1A1A;margin-top:0.5rem;'>Warehouse Management System</h2>"
+        "<h2 style='text-align:center;color:#1A1A1A;margin-top:0.5rem;font-size:1.5rem;white-space:nowrap;'>Warehouse Management System</h2>"
         "<p style='text-align:center;color:#666;margin-bottom:1.5rem;'>For Reconciliation and Expiry Monitoring</p>",
         unsafe_allow_html=True,
     )
