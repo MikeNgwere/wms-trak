@@ -202,6 +202,24 @@ def history(warehouse_id):
            WHERE s.warehouse_id=%s ORDER BY s.stocktake_id DESC LIMIT 25""", (warehouse_id,))
 
 
+def monthly_progress(ym=None):
+    """One row per warehouse for the month: Completed (date, score) / In progress / Due for Stocktake."""
+    from datetime import date
+    ym = ym or date.today().strftime("%Y-%m")
+    return fetch_all(
+        """SELECT w.warehouse_id, w.warehouse_name, COALESCE(p.port_name, w.port_code) AS port_name,
+                  (SELECT s.closed_at FROM stocktakes s WHERE s.warehouse_id = w.warehouse_id AND s.status='closed'
+                      AND to_char(s.closed_at,'YYYY-MM') = %s ORDER BY s.closed_at DESC LIMIT 1) AS done_at,
+                  (SELECT s.score FROM stocktakes s WHERE s.warehouse_id = w.warehouse_id AND s.status='closed'
+                      AND to_char(s.closed_at,'YYYY-MM') = %s ORDER BY s.closed_at DESC LIMIT 1) AS done_score,
+                  (SELECT s.flagged FROM stocktakes s WHERE s.warehouse_id = w.warehouse_id AND s.status='closed'
+                      AND to_char(s.closed_at,'YYYY-MM') = %s ORDER BY s.closed_at DESC LIMIT 1) AS done_flagged,
+                  EXISTS (SELECT 1 FROM stocktakes s WHERE s.warehouse_id = w.warehouse_id AND s.status='open') AS is_open,
+                  (SELECT MAX(s.closed_at) FROM stocktakes s WHERE s.warehouse_id = w.warehouse_id AND s.status='closed') AS last_done
+           FROM warehouses w LEFT JOIN ports p ON p.port_code = w.port_code
+           ORDER BY port_name, w.warehouse_name""", (ym, ym, ym))
+
+
 # ---------------------------------------------------------------- Admin UI
 def stocktake_tab(user):
     """Counting screen. Only Admin may count."""
@@ -216,6 +234,23 @@ def stocktake_tab(user):
     st.subheader("Stocktake (Audit)")
     st.caption("Count what is physically in a warehouse against what the system says should be there. "
                f"Score = present ÷ (expected + extras) × 100. Below {PASS_MARK:.0f} is flagged as potential fraud.")
+
+    from datetime import date
+    prog = monthly_progress()
+    done_n = sum(1 for r in prog if r["done_at"])
+    st.markdown(f"**Stocktake progress — {date.today():%B %Y}** &nbsp; ({done_n} of {len(prog)} warehouses completed)")
+    if prog:
+        st.progress(done_n / len(prog))
+        pdf = pd.DataFrame([{
+            "Station": r["port_name"], "Warehouse": r["warehouse_name"],
+            "Status": (f"✅ Completed — {r['done_at']:%d %b %Y}" if r["done_at"]
+                       else ("🟡 In progress" if r["is_open"] else "🔴 Due for Stocktake")),
+            "Score": (f"{float(r['done_score']):.1f}/100" + (" ⚠" if r["done_flagged"] else "")) if r["done_score"] is not None else "—",
+            "Last stocktake": f"{r['last_done']:%d %b %Y}" if r["last_done"] else "Never",
+        } for r in prog])
+        st.dataframe(pdf, hide_index=True, use_container_width=True)
+        st.caption("Every warehouse must be stocktaken once a month. Pick a warehouse below to start or continue.")
+    st.divider()
 
     whs = fetch_all("""SELECT w.warehouse_id, w.warehouse_name, w.port_code, COALESCE(p.port_name, w.port_code) AS port_name
                        FROM warehouses w LEFT JOIN ports p ON p.port_code = w.port_code
