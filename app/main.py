@@ -103,7 +103,7 @@ def login_screen():
         pass
     st.markdown(
         "<h2 style='text-align:center;color:#1A1A1A;margin-top:0.5rem;'>Warehouse Management System</h2>"
-        "<p style='text-align:center;color:#666;margin-bottom:1.5rem;'>Warehouse Management System</p>",
+        "<p style='text-align:center;color:#666;margin-bottom:1.5rem;'>For Reconciliation and Expiry Monitoring</p>",
         unsafe_allow_html=True,
     )
     with st.form("login"):
