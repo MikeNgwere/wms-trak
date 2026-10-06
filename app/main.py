@@ -998,12 +998,35 @@ def admin_statistics_tab(user):
 
 # ==================== DASHBOARD ROUTER ====================
 
-def role_dashboard():
-    user = st.session_state.user
-    render_sidebar(user)
+_NAV_CSS = """
+<style>
+/* ZIMRA navigation: sticky button-style tab bar */
+div:has(> div[data-baseweb="tab-list"]){
+  position: sticky; top: 3.4rem; z-index: 999; background: #FFFFFF;
+}
+div[data-baseweb="tab-list"]{
+  background: #FFFFFF; padding: 10px 6px; gap: 8px;
+  border-bottom: 3px solid #E8B820; box-shadow: 0 4px 10px rgba(20,52,42,.12);
+  overflow-x: auto; flex-wrap: nowrap;
+}
+div[data-baseweb="tab-list"] button[role="tab"]{
+  background: #1F4E3D; color: #FFFFFF !important; border-radius: 8px;
+  padding: 8px 18px; height: auto; font-weight: 600; letter-spacing: .2px;
+  border: 1px solid #1F4E3D; white-space: nowrap; transition: background .15s, transform .1s;
+}
+div[data-baseweb="tab-list"] button[role="tab"] p{ color: #FFFFFF !important; font-weight: 600; }
+div[data-baseweb="tab-list"] button[role="tab"]:hover{ background: #2D6A52; transform: translateY(-1px); }
+div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"]{
+  background: #E8B820; border-color: #E8B820; box-shadow: 0 2px 6px rgba(0,0,0,.2);
+}
+div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] p{ color: #14342A !important; }
+div[data-baseweb="tab-highlight"], div[data-baseweb="tab-border"]{ display: none; }
+</style>
+"""
 
-    st.title(f"{user['role_name']} Dashboard")
 
+def dashboard_overview(user):
+    """Overdue statutory deadlines, perishable expiry and the user's own stocktake rating."""
     scope_port = None if user["role_name"] in ("Manager", "Admin") else user["port_code"]
 
     st.subheader("Bond / Appeal Deadlines Approaching or Overdue")
@@ -1023,79 +1046,47 @@ def role_dashboard():
         entry_document_picker(perishable_rows, key="dash_pr")
     else:
         st.info("No perishable goods approaching expiry.")
-    st.divider()
 
+    st.divider()
     render_my_rating(user)
-    st.divider()
 
-    if user["role_name"] == "Officer":
-        tabs = st.tabs([
-            "Capture Entry", "My Captured Entries", "Warehouses & Pounds",
-            "Request Action", "Finalize Action", "Released & Sold", "Stocktake Reports",
-        ])
-        with tabs[0]:
-            officer_capture_tab(user)
-        with tabs[1]:
-            officer_my_entries_tab(user)
-        with tabs[2]:
-            officer_warehouses_tab(user)
-        with tabs[3]:
-            officer_action_tab(user)
-        with tabs[4]:
-            officer_finalize_tab(user)
-        with tabs[5]:
-            released_sold_tab(user)
-        with tabs[6]:
-            stocktake_reports_tab(user)
 
-    elif user["role_name"] == "Supervisor":
-        tabs = st.tabs(["Review Requests", "Warehouse Overview", "Released & Sold", "Stocktake Reports"])
-        with tabs[0]:
-            supervisor_review_tab(user)
-        with tabs[1]:
-            warehouse_overview_tab(user)
-        with tabs[2]:
-            released_sold_tab(user)
-        with tabs[3]:
-            stocktake_reports_tab(user)
+def role_dashboard():
+    user = st.session_state.user
+    render_sidebar(user)
 
-    elif user["role_name"] == "Manager":
-        tabs = st.tabs(["Final Approvals", "Warehouse Overview", "Released & Sold", "Stocktake Reports"])
-        with tabs[0]:
-            manager_approvals_tab(user)
-        with tabs[1]:
-            warehouse_overview_tab(user)
-        with tabs[2]:
-            released_sold_tab(user)
-        with tabs[3]:
-            stocktake_reports_tab(user)
+    st.title(f"{user['role_name']} Dashboard")
+    st.markdown(_NAV_CSS, unsafe_allow_html=True)
 
-    elif user["role_name"] == "Admin":
-        tabs = st.tabs([
-            "Profile Requests", "Users", "Entry Correction", "Audit Trail",
-            "Messages", "Statistics", "Warehouse Overview", "Stocktake", "Stocktake Reports",
-        ])
-        with tabs[0]:
-            admin_profile_requests_tab(user)
-        with tabs[1]:
-            admin_users_tab(user)
-        with tabs[2]:
-            admin_entry_correction_tab(user)
-        with tabs[3]:
-            admin_audit_tab(user)
-        with tabs[4]:
-            admin_messages_tab(user)
-        with tabs[5]:
-            admin_statistics_tab(user)
-        with tabs[6]:
-            warehouse_overview_tab(user)
-        with tabs[7]:
-            stocktake_tab(user)
-        with tabs[8]:
-            stocktake_reports_tab(user)
-
+    role = user["role_name"]
+    if role == "Officer":
+        names = ["Capture Entry", "My Captured Entries", "Warehouses & Pounds",
+                 "Request Action", "Finalize Action", "Released & Sold", "Stocktake Reports"]
+        fns = [officer_capture_tab, officer_my_entries_tab, officer_warehouses_tab,
+               officer_action_tab, officer_finalize_tab, released_sold_tab, stocktake_reports_tab]
+    elif role == "Supervisor":
+        names = ["Review Requests", "Warehouse Overview", "Released & Sold", "Stocktake Reports"]
+        fns = [supervisor_review_tab, warehouse_overview_tab, released_sold_tab, stocktake_reports_tab]
+    elif role == "Manager":
+        names = ["Final Approvals", "Warehouse Overview", "Released & Sold", "Stocktake Reports"]
+        fns = [manager_approvals_tab, warehouse_overview_tab, released_sold_tab, stocktake_reports_tab]
+    elif role == "Admin":
+        names = ["Profile Requests", "Users", "Entry Correction", "Audit Trail", "Messages",
+                 "Statistics", "Warehouse Overview", "Stocktake", "Stocktake Reports"]
+        fns = [admin_profile_requests_tab, admin_users_tab, admin_entry_correction_tab, admin_audit_tab,
+               admin_messages_tab, admin_statistics_tab, warehouse_overview_tab, stocktake_tab,
+               stocktake_reports_tab]
     else:
         st.info("No dashboard tabs configured for this role yet.")
+        return
+
+    # Navigation first (sticky), then the overview: overdue items and physical expiry.
+    tabs = st.tabs(["Overview"] + names)
+    with tabs[0]:
+        dashboard_overview(user)
+    for tab, fn in zip(tabs[1:], fns):
+        with tab:
+            fn(user)
 
 
 # Restore session from URL token if the page was refreshed
