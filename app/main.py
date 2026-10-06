@@ -1011,27 +1011,27 @@ div[data-baseweb="tab-list"]{
   box-shadow: 0 4px 10px rgba(20,52,42,.10);
   overflow-x: auto !important; overflow-y: hidden; flex-wrap: nowrap;
   scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin; scrollbar-color: #1F4E3D #E9ECEF;
+  scrollbar-width: thin; scrollbar-color: #A9AEB4 #ECEEF0;
   cursor: grab;
 }
 div[data-baseweb="tab-list"]::-webkit-scrollbar{ height: 8px; }
 div[data-baseweb="tab-list"]::-webkit-scrollbar-track{ background: #E9ECEF; border-radius: 4px; }
-div[data-baseweb="tab-list"]::-webkit-scrollbar-thumb{ background: #1F4E3D; border-radius: 4px; }
-div[data-baseweb="tab-list"]::-webkit-scrollbar-thumb:hover{ background: #E8B820; }
+div[data-baseweb="tab-list"]::-webkit-scrollbar-thumb{ background: #A9AEB4; border-radius: 4px; }
+div[data-baseweb="tab-list"]::-webkit-scrollbar-thumb:hover{ background: #7D838A; }
 div[data-baseweb="tab-list"] button[role="tab"]{
   position: relative; flex: 0 0 auto;
-  background: #1F4E3D; color: #FFFFFF !important; border-radius: 8px;
+  background: #CFE8D5; color: #14342A !important; border-radius: 8px;
   padding: 8px 18px; height: auto; font-weight: 600; letter-spacing: .2px;
-  border: 1px solid #1F4E3D; white-space: nowrap; transition: background .15s, transform .1s;
+  border: 1px solid #9FCFAB; white-space: nowrap; transition: background .15s, transform .1s;
 }
-div[data-baseweb="tab-list"] button[role="tab"] p{ color: #FFFFFF !important; font-weight: 600; }
-div[data-baseweb="tab-list"] button[role="tab"]:hover{ background: #2D6A52; transform: translateY(-1px); }
+div[data-baseweb="tab-list"] button[role="tab"] p{ color: #14342A !important; font-weight: 600; }
+div[data-baseweb="tab-list"] button[role="tab"]:hover{ background: #B7DCC0; transform: translateY(-1px); }
 /* line under a button: grey on hover, red for the selected one */
 div[data-baseweb="tab-list"] button[role="tab"]::after{
   content: ""; position: absolute; left: 0; right: 0; bottom: -11px; height: 3px;
   background: transparent; border-radius: 2px;
 }
-div[data-baseweb="tab-list"] button[role="tab"]:hover::after{ background: #9AA0A6; }
+div[data-baseweb="tab-list"] button[role="tab"]:hover::after{ background: #F28C28; }
 div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"]{
   background: #E8B820; border-color: #E8B820; box-shadow: 0 2px 6px rgba(0,0,0,.2);
 }
