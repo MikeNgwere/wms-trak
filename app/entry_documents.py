@@ -474,26 +474,79 @@ def pdf_to_png(pdf_bytes, zoom=1.6):
     return doc[0].get_pixmap(matrix=fitz.Matrix(zoom, zoom)).tobytes("png")
 
 
-# ---------- Streamlit widget ----------
+# ---------- Streamlit widgets ----------
+def _resolve_entry_id(row):
+    """Return an entry_id for a list row: use entry_id if present, else look it up by entry_number."""
+    if not isinstance(row, dict) and hasattr(row, "keys"):
+        row = dict(row)
+    if row.get("entry_id"):
+        return row["entry_id"]
+    num = row.get("entry_number")
+    if not num:
+        return None
+    et = row.get("entry_type")
+    if et in ("RIH", "NOS"):
+        found = fetch_one("SELECT entry_id FROM entries WHERE entry_number=%s AND entry_type=%s ORDER BY entry_id DESC LIMIT 1", (num, et))
+    else:
+        found = fetch_one("SELECT entry_id FROM entries WHERE entry_number=%s ORDER BY entry_id DESC LIMIT 1", (num,))
+    return found["entry_id"] if found else None
+
+
 def render_entry_document(entry_id, key):
-    """Under an entry: 'View RIH/NOS' with on-screen preview, Print and Download PDF."""
+    """Toggle 'View RIH/NOS' for one entry; the PDF is only built when switched on."""
     import base64
     import streamlit as st
     import streamlit.components.v1 as components
 
+    if not entry_id:
+        return
+    head = fetch_one("SELECT entry_type, entry_number FROM entries WHERE entry_id=%s", (entry_id,))
+    if not head:
+        return
+    kind = head["entry_type"]
+    if not st.toggle(f"📄 View / print {kind} — {head['entry_number']}", key=f"vt_{key}_{entry_id}"):
+        return
     d = fetch_entry_document_data(entry_id)
     if not d:
         return
-    kind = d["entry_type"]
-    with st.expander(f"📄 View {kind}"):
-        pdf = build_entry_pdf(d)
-        b64 = base64.b64encode(pdf_to_png(pdf)).decode()
-        components.html(
-            f"""<style>@media print{{.np{{display:none}} @page{{size:A4;margin:0}} body{{margin:0}}}}</style>
+    pdf = build_entry_pdf(d)
+    b64 = base64.b64encode(pdf_to_png(pdf)).decode()
+    components.html(
+        f"""<style>@media print{{.np{{display:none}} @page{{size:A4;margin:0}} body{{margin:0}}}}</style>
 <div class='np' style='text-align:right;margin-bottom:6px'>
 <button onclick='window.print()' style='padding:6px 16px;background:#1F4E3D;color:#fff;border:0;border-radius:4px;cursor:pointer'>🖨 Print</button></div>
 <img src='data:image/png;base64,{b64}' style='width:100%;border:1px solid #ccc'>""",
-            height=1050, scrolling=True)
-        st.download_button(f"⬇ Download {kind} (PDF)", data=pdf,
-                           file_name=f"{kind}_{d.get('entry_number', entry_id)}.pdf",
-                           mime="application/pdf", key=f"dl_{key}_{entry_id}")
+        height=1050, scrolling=True)
+    st.download_button(f"⬇ Download {kind} (PDF)", data=pdf,
+                       file_name=f"{kind}_{d.get('entry_number', entry_id)}.pdf",
+                       mime="application/pdf", key=f"dl_{key}_{entry_id}")
+
+
+def render_entry_document_for_row(row, key):
+    """For a card/row that represents one entry (or a request about one)."""
+    try:
+        eid = _resolve_entry_id(row)
+    except Exception:
+        eid = None
+    if eid:
+        render_entry_document(eid, key=f"{key}_{eid}")
+
+
+def entry_document_picker(rows, key, label="📄 Open RIH / NOS document for an entry"):
+    """Under a table of entries: choose one entry, then view / print / download its document."""
+    import streamlit as st
+    try:
+        rows = [dict(r) for r in (rows or [])]
+    except Exception:
+        return
+    options = {}
+    for r in rows:
+        num = r.get("entry_number")
+        if num:
+            options[f"{num} ({r['entry_type']})" if r.get("entry_type") else str(num)] = r
+    if not options:
+        return
+    pick = st.selectbox(label, list(options.keys()), index=None,
+                        placeholder="Select an entry…", key=f"pick_{key}")
+    if pick:
+        render_entry_document_for_row(options[pick], key=f"pk_{key}")

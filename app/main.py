@@ -25,7 +25,7 @@ from app.admin import (
     list_all_messages, revenue_stats, warehouse_usage_stats, days_until_expiry_report,
     get_user_by_id, update_user,
 )
-from app.entry_documents import render_entry_document
+from app.entry_documents import render_entry_document, render_entry_document_for_row, entry_document_picker
 from app.bond_engine import entries_nearing_expiry
 from app.theme import render_sidebar, inject_global_css, clear_form_keys
 from app.entries import capture_entry, entries_captured_by, active_entries_for_port, get_entry_full_detail, perishable_goods_nearing_expiry
@@ -384,6 +384,7 @@ def officer_finalize_tab(user):
         with st.container(border=True):
             st.write(f"**{r['entry_number']}** ({r['entry_type']}) — {r['action_type'].replace('_', ' ').title()}")
             st.caption(f"{r['goods_description']} · Declared value: {r['declared_value']}")
+            render_entry_document_for_row(r, key=f"fin_{r['request_id']}")
 
             if r["action_type"] == "release_to_owner":
                 with st.form(f"finalize_release_{r['request_id']}"):
@@ -531,6 +532,7 @@ def officer_warehouses_tab(user):
                 held = goods_in_warehouse(w["warehouse_id"])
                 if held:
                     st.dataframe(held, use_container_width=True)
+                    entry_document_picker(held, key=f"wh_{w['warehouse_id']}")
                 else:
                     st.caption("Empty.")
 
@@ -549,6 +551,9 @@ def officer_action_tab(user):
         format_func=lambda x: x.replace("_", " ").title(),
         key="req_action_type",
     )
+
+    with st.expander("📄 View / print an RIH or NOS"):
+        entry_document_picker(active, key="act")
 
     form_keys = [
         "req_entry_choice", "req_notes", "req_ministry_name", "req_letter_ref",
@@ -613,6 +618,7 @@ def released_sold_tab(user):
     rows = released_and_sold(scope_port)
     if rows:
         st.dataframe(rows, use_container_width=True)
+        entry_document_picker(rows, key="rel")
     else:
         st.info("No released or sold goods yet.")
 
@@ -630,6 +636,7 @@ def supervisor_review_tab(user):
                 st.write(f"**{r['entry_number']}** ({r['entry_type']}) — {r['action_type'].replace('_', ' ').title()}")
                 st.caption(f"{r['goods_description']} · Value: {r['declared_value']}")
                 st.caption(f"Officer notes: {r['request_notes']}")
+                render_entry_document_for_row(r, key=f"sup_{r['request_id']}")
                 notes = st.text_input("Supervisor notes", key=f"supnotes_{r['request_id']}")
                 c1, c2 = st.columns(2)
                 with c1:
@@ -655,6 +662,7 @@ def manager_approvals_tab(user):
                 st.write(f"**{r['entry_number']}** ({r['entry_type']}) — {r['port_code']} — {r['action_type'].replace('_', ' ').title()}")
                 st.caption(f"{r['goods_description']} · Value: {r['declared_value']}")
                 st.caption(f"Officer notes: {r['request_notes']} · Supervisor notes: {r['supervisor_notes']}")
+                render_entry_document_for_row(r, key=f"mgr_{r['request_id']}")
                 notes = st.text_input("Manager notes", key=f"mgrnotes_{r['request_id']}")
                 c1, c2 = st.columns(2)
                 with c1:
@@ -693,6 +701,7 @@ def warehouse_overview_tab(user):
         rows = rih_list(scope_port, wh_choices[wh_pick], date_from or None, date_to or None)
         if rows:
             st.dataframe(rows, use_container_width=True)
+            entry_document_picker(rows, key="ov_rih")
         else:
             st.info("No RIH entries match the filters.")
 
@@ -700,6 +709,7 @@ def warehouse_overview_tab(user):
         rows = seizures_list(scope_port, wh_choices[wh_pick], date_from or None, date_to or None)
         if rows:
             st.dataframe(rows, use_container_width=True)
+            entry_document_picker(rows, key="ov_nos")
         else:
             st.info("No seizures match the filters.")
 
@@ -923,6 +933,7 @@ def admin_audit_tab(user):
     st.markdown("**Detained goods currently active, with responsible officer**")
     if detained:
         st.dataframe(detained, use_container_width=True)
+        entry_document_picker(detained, key="aud_det")
     else:
         st.info("No active detained goods.")
 
@@ -978,6 +989,7 @@ def admin_statistics_tab(user):
     expiry = days_until_expiry_report()
     if expiry:
         st.dataframe(expiry, use_container_width=True)
+        entry_document_picker(expiry, key="stat_exp")
     else:
         st.info("No active RIH entries.")
 
@@ -997,6 +1009,7 @@ def role_dashboard():
     rows = entries_nearing_expiry(warning_window_days=2)
     if rows:
         st.dataframe(rows, use_container_width=True)
+        entry_document_picker(rows, key="dash_dl")
     else:
         st.info("No entries nearing their statutory deadline.")
 
@@ -1005,6 +1018,7 @@ def role_dashboard():
     perishable_rows = perishable_goods_nearing_expiry(scope_port, warning_days=14)
     if perishable_rows:
         st.dataframe(perishable_rows, use_container_width=True)
+        entry_document_picker(perishable_rows, key="dash_pr")
     else:
         st.info("No perishable goods approaching expiry.")
     st.divider()
