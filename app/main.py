@@ -1033,10 +1033,10 @@ div[data-baseweb="tab-list"] button[role="tab"]::after{
 }
 div[data-baseweb="tab-list"] button[role="tab"]:hover::after{ background: #F28C28; }
 div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"]{
-  background: #E8B820; border-color: #E8B820; box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  background: #9FD3AB; border-color: #5FAE72; box-shadow: 0 2px 6px rgba(20,52,42,.18);
 }
 div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"] p{ color: #14342A !important; }
-div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"]::after{ background: #C8102E; }
+div[data-baseweb="tab-list"] button[role="tab"][aria-selected="true"]::after{ background: #F28C28; }
 div[data-baseweb="tab-highlight"], div[data-baseweb="tab-border"]{ display: none; }
 </style>
 """
