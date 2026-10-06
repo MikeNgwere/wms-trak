@@ -423,31 +423,22 @@ def stocktake_reports_tab(user):
 
 
 def render_my_rating(user):
-    """Dashboard card: individual rating (last 90 days) + latest stocktake results for the station."""
+    """Dashboard card: ONLY the person's own stocktake rating (last 90 days)."""
     import streamlit as st
 
-    port = _scope_port(user)
-    since = datetime.now() - timedelta(days=90)
-    rows = closed_stocktakes(port=port, start=since)
-    st.subheader("Stocktake Rating")
-    if not rows:
-        st.info("No stocktake has been completed in the last 90 days.")
-        return
-    latest = latest_per_warehouse(rows)
-    cols = st.columns(min(len(latest), 4) or 1)
-    for col, r in zip(cols, latest[:4]):
-        col.metric(f"{r['warehouse_name']}", f"{float(r['score']):.1f}/100" if r["score"] is not None else "—",
-                   "FLAGGED" if r["flagged"] else "Pass", delta_color="inverse" if r["flagged"] else "normal")
     role = user["role_name"]
-    if role in _ROLE_COL:
-        me = my_rating(user, [r["stocktake_id"] for r in rows])
-        if not me or not me["items"]:
-            st.info({"Officer": "Your stocktake rating: you did not enter goods into this warehouse. "
-                                "You can still open the Stocktake Reports tab for the station's reports.",
-                     "Supervisor": "Your stocktake rating: no goods that you approved were in the stocktakes. "
-                                   "Station reports are in the Stocktake Reports tab.",
-                     "Manager": "Your stocktake rating: no goods that you approved were in the stocktakes. "
-                                "Reports are in the Stocktake Reports tab."}[role])
-        else:
-            msg = f"Your rating: **{me['rating']:.1f}/100** ({me['present']} of {me['items']} goods found)"
-            (st.success if me["rating"] >= PASS_MARK else st.error)(msg + ("" if me["rating"] >= PASS_MARK else " — below the 95 pass mark"))
+    if role not in _ROLE_COL:          # Admin has no personal rating
+        return
+    st.subheader("Your Stocktake Rating")
+    rows = closed_stocktakes(port=_scope_port(user), start=datetime.now() - timedelta(days=90))
+    me = my_rating(user, [r["stocktake_id"] for r in rows]) if rows else None
+    if not me or not me["items"]:
+        st.info("You did not enter goods into the warehouse." if role == "Officer"
+                else "No goods that you approved were in the stocktakes.")
+        return
+    c1, c2 = st.columns([1, 3])
+    c1.metric("Rating", f"{me['rating']:.1f}/100",
+              "Pass" if me["rating"] >= PASS_MARK else "Below 95 — flagged",
+              delta_color="normal" if me["rating"] >= PASS_MARK else "inverse")
+    c2.caption(f"{me['present']} of {me['items']} of your goods were found in the last 90 days. "
+               "Open the Stocktake Reports tab for the station's reports.")
