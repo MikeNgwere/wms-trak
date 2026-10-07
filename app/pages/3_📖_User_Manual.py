@@ -148,6 +148,29 @@ st.markdown(
 
 st.divider()
 
+st.markdown("## Transferring Goods or Vehicles Between Warehouses and Pounds")
+st.write(
+    "When goods must move from one warehouse to another, or a vehicle from one pound to "
+    "another, the move is requested and approved in the system so the record always shows "
+    "where the goods are. Transfers are within the same station."
+)
+st.markdown(
+    "1. **Officer** — open **Transfers**, choose the entry, choose the destination "
+    "warehouse or pound and give the reason, then submit.\n"
+    "2. **Supervisor** — reviews the request under **Transfers** and approves or rejects it "
+    "with notes.\n"
+    "3. **Manager** — gives the final decision. The Supervisor must approve first.\n"
+    "4. When the Manager approves, the goods are **moved automatically**: the entry's "
+    "warehouse changes and the occupancy of both locations updates.\n"
+    "5. Anyone involved can open the **movement history** of an entry and print or download "
+    "the **Transfer Note** (with a verification QR code) to travel with the goods.\n"
+    "- Only one transfer can be pending for an entry at a time.\n"
+    "- If **Transfers** tells you your profile has no station, ask the Admin to assign your "
+    "station under **Users**."
+)
+
+st.divider()
+
 st.markdown("## Role-by-Role Guide")
 
 with st.expander("👮 Officer", expanded=(user["role_name"] == "Officer")):
@@ -181,6 +204,8 @@ with st.expander("👮 Officer", expanded=(user["role_name"] == "Officer")):
         "stakeholders present; E-Auction asks for revenue collected and buyer "
         "details. For an RIH e-auction, the Gazette notice must be recorded and the "
         "one-month period completed first. All require a receipt number where applicable.\n"
+        "- **Transfers**: request a move of goods or a vehicle to another warehouse "
+        "or pound, and follow its approval.\n"
         "- **Released & Sold**: see everything that's left active tracking at your "
         "station, plus running revenue totals, and print the closing document for "
         "any finalized entry.\n"
@@ -196,6 +221,8 @@ with st.expander("🧭 Supervisor", expanded=(user["role_name"] == "Supervisor")
         "- **Review Requests**: Officer-submitted requests at your station land "
         "here first, regardless of action type. Approve to forward to the "
         "Manager, or reject with a reason.\n"
+        "- **Transfers**: approve or reject Officer requests to move goods or vehicles "
+        "between warehouses/pounds at your station; Manager decides next.\n"
         "- **Warehouse Overview**: RIH list, Seizures list, and a monthly summary "
         "for your station — filterable by warehouse and date range.\n"
         "- **Released & Sold**: everything finalized at your station, with revenue "
@@ -213,6 +240,8 @@ with st.expander("✅ Manager", expanded=(user["role_name"] == "Manager")):
         "here, from all ports. Approving here grants **permission** — the entry "
         "moves to 'awaiting finalization,' but stays in active tracking until the "
         "Officer completes the finalization step.\n"
+        "- **Transfers**: give the final decision on transfers a Supervisor has approved. "
+        "Approving moves the goods automatically.\n"
         "- **Warehouse Overview**: same as Supervisor's, but across all ports.\n"
         "- **Released & Sold**: system-wide revenue totals and finalized entries.\n"
         "- **Stocktake Reports**: results and monthly reports for all stations, "
@@ -235,6 +264,8 @@ with st.expander("🛠️ Admin", expanded=(user["role_name"] == "Admin")):
         "- **Statistics**: total revenue collected, warehouse usage across all "
         "stations, and RIH entries sorted by days remaining until expiry.\n"
         "- **Warehouse Overview**: same filterable view available to Manager.\n"
+        "- **Transfers**: view all transfer requests and the movement history of goods "
+        "across warehouses and pounds.\n"
         "- **Stocktake**: the audit count. Only the Admin counts stock (see below).\n"
         "- **Stocktake Reports**: results and ratings for everyone."
     )
