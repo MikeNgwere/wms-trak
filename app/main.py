@@ -29,6 +29,7 @@ from app.admin import (
 from app.entry_documents import render_entry_document, render_entry_document_for_row, entry_document_picker, _resolve_entry_id
 from app.closing_documents import closing_document_picker
 from app.auction_notice import auction_notice_panel, auction_tracking_rows
+from app.transfers import transfers_tab
 from app.stocktake import stocktake_tab
 from app.stocktake_reports import stocktake_reports_tab, render_my_rating
 from app.bond_engine import entries_nearing_expiry
@@ -1126,20 +1127,20 @@ def role_dashboard():
     role = user["role_name"]
     if role == "Officer":
         names = ["Capture Entry", "My Captured Entries", "Warehouses & Pounds",
-                 "Request Action", "Finalize Action", "Released & Sold", "Stocktake Reports"]
+                 "Request Action", "Finalize Action", "Transfers", "Released & Sold", "Stocktake Reports"]
         fns = [officer_capture_tab, officer_my_entries_tab, officer_warehouses_tab,
-               officer_action_tab, officer_finalize_tab, released_sold_tab, stocktake_reports_tab]
+               officer_action_tab, officer_finalize_tab, transfers_tab, released_sold_tab, stocktake_reports_tab]
     elif role == "Supervisor":
-        names = ["Review Requests", "Warehouse Overview", "Released & Sold", "Stocktake Reports"]
-        fns = [supervisor_review_tab, warehouse_overview_tab, released_sold_tab, stocktake_reports_tab]
+        names = ["Review Requests", "Transfers", "Warehouse Overview", "Released & Sold", "Stocktake Reports"]
+        fns = [supervisor_review_tab, transfers_tab, warehouse_overview_tab, released_sold_tab, stocktake_reports_tab]
     elif role == "Manager":
-        names = ["Final Approvals", "Warehouse Overview", "Released & Sold", "Stocktake Reports"]
-        fns = [manager_approvals_tab, warehouse_overview_tab, released_sold_tab, stocktake_reports_tab]
+        names = ["Final Approvals", "Transfers", "Warehouse Overview", "Released & Sold", "Stocktake Reports"]
+        fns = [manager_approvals_tab, transfers_tab, warehouse_overview_tab, released_sold_tab, stocktake_reports_tab]
     elif role == "Admin":
         names = ["Profile Requests", "Users", "Entry Correction", "Audit Trail", "Messages",
-                 "Statistics", "Warehouse Overview", "Stocktake", "Stocktake Reports"]
+                 "Statistics", "Warehouse Overview", "Transfers", "Stocktake", "Stocktake Reports"]
         fns = [admin_profile_requests_tab, admin_users_tab, admin_entry_correction_tab, admin_audit_tab,
-               admin_messages_tab, admin_statistics_tab, warehouse_overview_tab, stocktake_tab,
+               admin_messages_tab, admin_statistics_tab, warehouse_overview_tab, transfers_tab, stocktake_tab,
                stocktake_reports_tab]
     else:
         st.info("No dashboard tabs configured for this role yet.")

@@ -22,7 +22,8 @@ def _mask(name):
 
 
 LABELS = {"RIH": "Receipt for Items Held (RIH)", "NOS": "Notice of Seizure (NOS)",
-          "CLOSE": "Closing document (receipt / record / certificate)", "NOTICE": "Notice of E-Auction"}
+          "CLOSE": "Closing document (receipt / record / certificate)", "NOTICE": "Notice of E-Auction",
+          "TRANSFER": "Warehouse Transfer Note"}
 CLOSE_NAMES = {"release_to_owner": "Release Receipt", "forfeiture": "Forfeiture / Appropriation Record",
                "destruction": "Certificate of Destruction", "e_auction": "E-Auction Sale Record"}
 
@@ -42,6 +43,18 @@ def _lookup_other(kind, number):
         if r:
             r["title"] = CLOSE_NAMES.get(r["action_type"], "Closing document")
             r["doc_number"] = f"{r['request_id']:05d}"
+        return r
+    if kind == "TRANSFER":
+        r = fetch_one("""SELECT t.transfer_id, t.moved_at AS on_date, e.entry_number, e.entry_type, e.goods_description,
+                                p.port_name, fw.warehouse_name AS from_name, tw.warehouse_name AS to_name
+                         FROM transfer_requests t JOIN entries e ON e.entry_id = t.entry_id
+                         JOIN warehouses fw ON fw.warehouse_id = t.from_warehouse_id
+                         JOIN warehouses tw ON tw.warehouse_id = t.to_warehouse_id
+                         LEFT JOIN ports p ON p.port_code = e.port_code
+                         WHERE t.transfer_id = %s AND t.status = 'approved'""", (n,))
+        if r:
+            r["title"] = "Warehouse Transfer Note"
+            r["doc_number"] = f"TRF/{r['transfer_id']:05d}"
         return r
     r = fetch_one("""SELECT n.notice_id, n.gazette_date, n.auction_date, e.entry_number, e.entry_type, e.goods_description,
                             p.port_name, n.created_at AS on_date
@@ -91,10 +104,11 @@ if number:
         rec = None
         st.error("The verification service is unavailable right now. Please try again shortly.")
     else:
-        if rec and kind in ("CLOSE", "NOTICE"):
+        if rec and kind in ("CLOSE", "NOTICE", "TRANSFER"):
             st.success(f"✅ GENUINE — this {rec['title']} is recorded in the ZIMRA Warehouse Management System.")
             extra = (f"- **Gazette date / auction date:** {rec['gazette_date']:%d %b %Y} / {rec['auction_date']:%d %b %Y}\n"
-                     if kind == "NOTICE" else "")
+                     if kind == "NOTICE" else
+                     f"- **Moved:** {rec['from_name']} ➜ {rec['to_name']}\n" if kind == "TRANSFER" else "")
             st.markdown(
                 f"- **Document:** {rec['title']} No. **{rec['doc_number']}**\n"
                 f"- **Relates to:** {rec['entry_type']} entry {rec['entry_number']}\n"
