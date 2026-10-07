@@ -149,8 +149,9 @@ if not st.session_state.get("gq_ident"):
         elif email_problem(g_email):
             st.error(email_problem(g_email))
         elif email_already_responded(g_email):
-            st.warning("A response from this email address has already been recorded. "
-                       "Each person can respond only once — thank you for taking part.")
+            st.warning(f"The email **{clean_email(g_email)}** has already responded to this "
+                       "questionnaire. Each person can respond only once — thank you for taking part. "
+                       "If you have an account, you are welcome to log in and test the system.")
         else:
             st.session_state["gq_ident"] = {"name": g_name.strip(), "email": clean_email(g_email),
                                             "station": g_station.strip(), "role": g_role.strip()}
@@ -181,5 +182,5 @@ if sent:
         st.rerun()
     else:
         st.session_state.pop("gq_ident", None)
-        st.warning("A response from this email address has already been recorded, so this one was "
-                   "not saved. Each person can respond only once.")
+        st.warning(f"The email **{ident['email']}** has already responded to this questionnaire, "
+                   "so this one was not saved. Each person can respond only once.")

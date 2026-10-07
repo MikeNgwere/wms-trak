@@ -30,7 +30,7 @@ def _user_match_sql():
     global _HAS_USER_EMAIL
     if _HAS_USER_EMAIL is None:
         r = fetch_one("SELECT 1 AS ok FROM information_schema.columns "
-                      "WHERE table_name = 'users' AND column_name = 'email'")
+                      "WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'email'")
         _HAS_USER_EMAIL = bool(r)
     return ("(LOWER(username) = %s OR LOWER(email) = %s)", 2) if _HAS_USER_EMAIL else ("LOWER(username) = %s", 1)
 
@@ -38,24 +38,28 @@ def _user_match_sql():
 def email_already_responded(email):
     """True if this email has a guest response, or belongs to an account that has responded."""
     e = clean_email(email)
-    cond, n = _user_match_sql()
-    return fetch_one(
-        "SELECT 1 AS ok FROM questionnaire_responses r WHERE LOWER(r.respondent_email) = %s "
-        "OR r.submitted_by_user_id IN (SELECT user_id FROM users WHERE " + cond + ") LIMIT 1",
-        (e,) + (e,) * n) is not None
+    if fetch_one("SELECT 1 AS ok FROM questionnaire_responses WHERE LOWER(respondent_email) = %s LIMIT 1", (e,)):
+        return True
+    try:
+        cond, n = _user_match_sql()
+        return fetch_one(
+            "SELECT 1 AS ok FROM questionnaire_responses r WHERE r.submitted_by_user_id IN "
+            "(SELECT user_id FROM users WHERE " + cond + ") LIMIT 1", (e,) * n) is not None
+    except Exception:
+        return False  # account lookup unavailable: the guest-email check above still applies
 
 
 def guest_response_for_user(user_id):
-    """A guest-mode response previously given by this logged-in user's email, if any."""
-    u = fetch_one("SELECT username" + (", email" if _user_match_sql()[1] == 2 else "") +
-                  " FROM users WHERE user_id = %s", (user_id,))
-    if not u:
-        return None
-    emails = {clean_email(v) for v in u.values() if v}
-    for e in emails:
-        r = fetch_one("SELECT response_id FROM questionnaire_responses WHERE LOWER(respondent_email) = %s", (e,))
-        if r:
-            return r
+    """A guest-mode response previously given under this logged-in user's email, if any."""
+    try:
+        u = fetch_one("SELECT username" + (", email" if _user_match_sql()[1] == 2 else "") +
+                      " FROM users WHERE user_id = %s", (user_id,))
+        for e in {clean_email(v) for v in (u or {}).values() if v}:
+            r = fetch_one("SELECT response_id FROM questionnaire_responses WHERE LOWER(respondent_email) = %s", (e,))
+            if r:
+                return r
+    except Exception:
+        pass
     return None
 
 
