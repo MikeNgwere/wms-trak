@@ -42,7 +42,7 @@ def verify_login(username: str, password: str):
                r.role_name, u.port_code, u.is_active, u.phone_number
         FROM users u
         JOIN roles r ON r.role_id = u.role_id
-        WHERE u.username = %s
+        WHERE LOWER(u.username) = LOWER(TRIM(%s))
         """,
         (username,),
     )
@@ -114,7 +114,7 @@ def delete_session(token: str):
 def find_active_user_by_email(email: str):
     """Used by the Forgot Password flow to verify the account exists before allowing a reset."""
     return fetch_one(
-        "SELECT user_id, full_name, username FROM users WHERE username = %s AND is_active = TRUE",
+        "SELECT user_id, full_name, username FROM users WHERE LOWER(username) = LOWER(TRIM(%s)) AND is_active = TRUE",
         (email,),
     )
 
@@ -138,7 +138,7 @@ def submit_profile_request(full_name: str, email: str, phone_number: str,
         raise ValueError("Email must be a valid @zimra.co.zw address.")
     if not is_strong_password(plain_password):
         raise ValueError(password_requirements_text())
-    existing_user = fetch_one("SELECT user_id FROM users WHERE username = %s", (email,))
+    existing_user = fetch_one("SELECT user_id FROM users WHERE LOWER(username) = LOWER(TRIM(%s))", (email,))
     if existing_user:
         raise ValueError("An account with this email already exists.")
     existing_request = fetch_one(
