@@ -316,6 +316,10 @@ def transfers_tab(user):
 
     role = user["role_name"]
     st.subheader("Transfers — Moving Goods Between Warehouses and Pounds")
+    if role in ("Officer", "Supervisor") and not user.get("port_code"):
+        st.warning("Your profile has no station assigned, so no transfers can be shown. "
+                   "Ask the Admin to assign your station (Admin → Users).")
+        return
     msg = st.session_state.pop("trf_msg", None)
     if msg:
         st.success(msg)
