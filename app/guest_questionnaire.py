@@ -22,14 +22,47 @@ def email_problem(email):
     return None
 
 
+_HAS_USER_EMAIL = None
+
+
+def _user_match_sql():
+    """SQL fragment matching users whose username (or email column, if present) equals %s."""
+    global _HAS_USER_EMAIL
+    if _HAS_USER_EMAIL is None:
+        r = fetch_one("SELECT 1 AS ok FROM information_schema.columns "
+                      "WHERE table_name = 'users' AND column_name = 'email'")
+        _HAS_USER_EMAIL = bool(r)
+    return ("(LOWER(username) = %s OR LOWER(email) = %s)", 2) if _HAS_USER_EMAIL else ("LOWER(username) = %s", 1)
+
+
 def email_already_responded(email):
+    """True if this email has a guest response, or belongs to an account that has responded."""
+    e = clean_email(email)
+    cond, n = _user_match_sql()
     return fetch_one(
-        "SELECT response_id FROM questionnaire_responses WHERE LOWER(respondent_email) = %s",
-        (clean_email(email),)) is not None
+        "SELECT 1 AS ok FROM questionnaire_responses r WHERE LOWER(r.respondent_email) = %s "
+        "OR r.submitted_by_user_id IN (SELECT user_id FROM users WHERE " + cond + ") LIMIT 1",
+        (e,) + (e,) * n) is not None
+
+
+def guest_response_for_user(user_id):
+    """A guest-mode response previously given by this logged-in user's email, if any."""
+    u = fetch_one("SELECT username" + (", email" if _user_match_sql()[1] == 2 else "") +
+                  " FROM users WHERE user_id = %s", (user_id,))
+    if not u:
+        return None
+    emails = {clean_email(v) for v in u.values() if v}
+    for e in emails:
+        r = fetch_one("SELECT response_id FROM questionnaire_responses WHERE LOWER(respondent_email) = %s", (e,))
+        if r:
+            return r
+    return None
 
 
 def submit_guest_response(name, email, station, role, answers, comments):
     """Insert one guest response. Returns True if saved, False if that email already responded."""
+    if email_already_responded(email):
+        return False
     cols = sorted(answers, key=lambda k: int(k[1:]))
     sql = (
         "INSERT INTO questionnaire_responses (respondent_name, respondent_email, respondent_station, "

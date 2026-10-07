@@ -14,7 +14,8 @@ import streamlit as st
 from app.theme import render_sidebar, inject_global_css
 from app.questionnaire import QUESTIONS, submit_response, response_count, get_response_for_user
 from app.guest_questionnaire import (ALLOWED_DOMAINS, clean_email, email_problem,
-                                     email_already_responded, submit_guest_response)
+                                     email_already_responded, submit_guest_response,
+                                     guest_response_for_user)
 
 user = st.session_state.get("user")
 st.set_page_config(page_title="Questionnaire — Warehouse Management System",
@@ -42,6 +43,10 @@ if user:
     st.title("Pilot Test Questionnaire")
 
     existing = get_response_for_user(user["user_id"])
+    if not existing and guest_response_for_user(user["user_id"]):
+        st.success("You have already completed this questionnaire (as a guest). Thank you — "
+                   "each person can respond only once.")
+        st.stop()
     if existing:
         st.info("You've already submitted a response. Editing and saving below will update it.")
     else:
