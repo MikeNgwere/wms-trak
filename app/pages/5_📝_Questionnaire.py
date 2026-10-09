@@ -10,12 +10,13 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 import streamlit as st
+import streamlit.components.v1 as components
 
 from app.theme import render_sidebar, inject_global_css
 from app.questionnaire import QUESTIONS, submit_response, response_count, get_response_for_user
 from app.guest_questionnaire import (ALLOWED_DOMAINS, clean_email, email_problem,
                                      email_already_responded, submit_guest_response,
-                                     guest_response_for_user)
+                                     guest_response_for_user, submit_anonymous_response)
 
 user = st.session_state.get("user")
 st.set_page_config(page_title="Questionnaire — Warehouse Management System",
@@ -85,9 +86,26 @@ if user:
     st.stop()
 
 # --------------------------------------------------------------------------- guest
+# Best-effort "one response per browser" for anonymous answers: a flag kept in this browser's
+# local storage is passed back once via ?qd=1, read here, and the URL is cleaned straight away.
+if "qd" in st.query_params:
+    st.session_state["gq_device_done"] = True
+    st.query_params.clear()
+if not st.session_state.get("gq_device_checked"):
+    st.session_state["gq_device_checked"] = True
+    components.html("""<script>
+    try {
+      if (localStorage.getItem('wms_q_done')) {
+        const u = new URL(window.parent.location.href);
+        if (!u.searchParams.get('qd')) { u.searchParams.set('qd', '1'); window.parent.location.replace(u.toString()); }
+      }
+    } catch (e) {}
+    </script>""", height=0)
+
 st.title("Pilot Test Questionnaire")
 
 if st.session_state.get("gq_done"):
+    components.html("<script>try{localStorage.setItem('wms_q_done','1');}catch(e){}</script>", height=0)
     st.success("Thank you — your response has been recorded.")
     st.markdown(
         "### Want to see the system for yourself?\n"
@@ -120,7 +138,9 @@ st.success(
     "🔒 **Your information is private.** This research is carried out with the **authority of "
     "ZIMRA**. Your name and email are collected solely for this research, to record your "
     "response and to prevent duplicate submissions. They are kept confidential within ZIMRA, "
-    "are not published or shared outside the research, and are not used for any other purpose."
+    "are not published or shared outside the research, and are not used for any other purpose. "
+    "**Prefer not to share them? You can respond anonymously instead** — just choose that option "
+    "under the form in Step 1."
 )
 st.info(
     "**Why your answers matter.** This is a pilot study. Your honest ratings decide whether the system "
@@ -143,6 +163,15 @@ if not st.session_state.get("gq_ident"):
         with c2:
             g_role = st.text_input("Role / position (optional)")
         go = st.form_submit_button("Continue to the questionnaire", type="primary")
+    st.markdown("Prefer not to give your name and email?")
+    anon = st.button("Respond anonymously instead")
+    if anon:
+        if st.session_state.get("gq_device_done"):
+            st.warning("A response has already been submitted from this browser. "
+                       "Each person can respond only once — thank you for taking part.")
+        else:
+            st.session_state["gq_ident"] = {"anonymous": True}
+            st.rerun()
     if go:
         if not g_name.strip() or len(g_name.strip().split()) < 2:
             st.error("Please enter your full name (first name and surname).")
@@ -159,8 +188,12 @@ if not st.session_state.get("gq_ident"):
     st.stop()
 
 ident = st.session_state["gq_ident"]
-st.success(f"Responding as **{ident['name']}** ({ident['email']})")
-if st.button("Not you? Change details"):
+if ident.get("anonymous"):
+    st.success("Responding **anonymously** — no name or email will be stored. Your answers are "
+               "recorded as “Anonymous” and are used only as combined results.")
+else:
+    st.success(f"Responding as **{ident['name']}** ({ident['email']})")
+if st.button("Change details" if not ident.get("anonymous") else "Give my details instead"):
     st.session_state.pop("gq_ident", None)
     st.rerun()
 
@@ -173,7 +206,16 @@ with st.form("gq_form"):
     comments = st.text_area("Any additional comments or suggestions?")
     sent = st.form_submit_button("Submit Questionnaire", type="primary")
 
-if sent:
+if sent and ident.get("anonymous"):
+    if st.session_state.get("gq_device_done"):
+        st.session_state.pop("gq_ident", None)
+        st.warning("A response has already been submitted from this browser, so this one was not saved. "
+                   "Each person can respond only once.")
+    elif submit_anonymous_response(answers, comments):
+        st.session_state["gq_done"] = True
+        st.session_state.pop("gq_ident", None)
+        st.rerun()
+elif sent:
     saved = submit_guest_response(ident["name"], ident["email"], ident["station"], ident["role"],
                                   answers, comments)
     if saved:

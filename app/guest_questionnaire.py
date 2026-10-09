@@ -77,3 +77,16 @@ def submit_guest_response(name, email, station, role, answers, comments):
     params = [name.strip(), clean_email(email), (station or "").strip(), (role or "").strip() or "Guest"]
     params += [answers[c] for c in cols] + [(comments or "").strip()]
     return fetch_one(sql, tuple(params)) is not None
+
+
+def submit_anonymous_response(answers, comments):
+    """Store a response with no name or email, recorded as 'Anonymous N'."""
+    cols = sorted(answers, key=lambda k: int(k[1:]))
+    sql = (
+        "INSERT INTO questionnaire_responses (respondent_name, respondent_email, respondent_station, "
+        "respondent_role, submitted_by_user_id, is_anonymous, " + ", ".join(cols) + ", comments, submitted_at) "
+        "VALUES ('Anonymous ' || nextval('questionnaire_anon_seq'), NULL, '', 'Anonymous', NULL, TRUE, "
+        + ", ".join(["%s"] * len(cols)) + ", %s, NOW()) RETURNING response_id"
+    )
+    params = [answers[c] for c in cols] + [(comments or "").strip()]
+    return fetch_one(sql, tuple(params)) is not None
