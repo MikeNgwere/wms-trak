@@ -164,7 +164,7 @@ if not st.session_state.get("gq_ident"):
             g_role = st.text_input("Role / position (optional)")
         go = st.form_submit_button("Continue to the questionnaire", type="primary")
     st.markdown("Prefer not to give your name and email?")
-    anon = st.button("Respond anonymously instead")
+    anon = st.button("Respond anonymously instead", type="primary")
     if anon:
         if st.session_state.get("gq_device_done"):
             st.warning("A response has already been submitted from this browser. "
