@@ -1,9 +1,10 @@
 """
 Pilot Test Results: visualizations and statistical analysis of the
-pilot-test questionnaire — pie/bar charts of response distributions,
-per-RQ reliability (Cronbach's alpha), and a paired t-test comparing
-manual-process weaknesses (RQ1) against digital-system effectiveness
-(RQ2), for direct use in the research paper's results section.
+pilot-test questionnaire — sample adequacy against the study population,
+pie/bar charts of response distributions, per-RQ reliability (Cronbach's alpha),
+agreement tested against the neutral midpoint of the scale, and a paired
+comparison of manual-process weaknesses (RQ1) with digital-system
+effectiveness (RQ2), for direct use in the research paper's results section.
 """
 import sys
 import os
@@ -17,6 +18,7 @@ from app.questionnaire import QUESTIONS, response_count
 from app.pilot_stats import (
     get_dataframe, rq_mean_per_respondent, cronbach_alpha,
     paired_ttest, question_mean_scores, overall_response_distribution, rq_question_keys,
+    POPULATION_SIZE, TARGET_MARGIN, NEUTRAL, required_sample, margin_of_error, vs_neutral, verdict,
 )
 
 st.set_page_config(page_title="Pilot Test Results — Warehouse Management System", layout="wide")
@@ -41,7 +43,27 @@ if df.empty or n < 2:
     )
     st.stop()
 
-st.metric("Total Respondents", n)
+# ---------------- Sample adequacy ----------------
+st.markdown("## Sample Adequacy")
+need = required_sample()
+moe = margin_of_error(n)
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Responses received", n)
+c2.metric("Target population", POPULATION_SIZE)
+c3.metric("Response rate", f"{100 * n / POPULATION_SIZE:.1f}%")
+c4.metric("Margin of error (95%)", f"±{100 * moe:.1f}%")
+st.progress(min(n / need, 1.0))
+if n >= need:
+    st.success(
+        f"Target reached: {n} responses meets the {need} needed for a ±{TARGET_MARGIN * 100:.0f}% "
+        f"margin of error at 95% confidence (population {POPULATION_SIZE})."
+    )
+else:
+    st.info(
+        f"**{need - n} more responses** are needed to reach the ±{TARGET_MARGIN * 100:.0f}% target "
+        f"({need} responses for a population of {POPULATION_SIZE}, 95% confidence, "
+        "finite-population correction)."
+    )
 
 st.divider()
 
@@ -96,41 +118,64 @@ for col, rq_title in zip(alpha_cols, QUESTIONS):
 
 st.divider()
 
-# ---------------- Key hypothesis test: RQ2 vs RQ1 ----------------
-st.markdown("## Statistical Test: Does the System Improve on the Manual Process?")
+# ---------------- Main test: agreement against the neutral midpoint ----------------
+st.markdown("## Statistical Test: Do Respondents Agree? (against the neutral midpoint)")
 st.write(
-    "A paired t-test compares each respondent's average agreement with "
-    "**RQ1 (manual process weaknesses)** against their average agreement "
-    "with **RQ2 (digital system effectiveness)**. A significantly higher "
-    "RQ2 score (p < 0.05) supports the conclusion that the system addresses "
-    "the weaknesses identified in the manual process."
+    f"Each respondent's average for a research question is compared with the neutral midpoint "
+    f"(**{NEUTRAL}** = 'Neutral') using a one-sample t-test and, because Likert data are ordinal, "
+    "a Wilcoxon signed-rank test as a check. A mean significantly **above** 3 (p < 0.05) means "
+    "respondents, as a group, agree with that research question's statements. "
+    "**d** is the effect size (0.2 small, 0.5 medium, 0.8 large)."
+)
+rows = []
+for rq_title, series in rq_means.items():
+    r = vs_neutral(series)
+    rows.append({
+        "Research question": rq_title,
+        "n": r["n"],
+        "Mean": round(r["mean"], 2),
+        "SD": round(r["sd"], 2) if pd.notna(r["sd"]) else None,
+        "95% CI": f"{r['ci_low']:.2f} – {r['ci_high']:.2f}" if pd.notna(r["ci_low"]) else "—",
+        "t": round(r["t"], 2) if pd.notna(r["t"]) else None,
+        "p (t-test)": "<0.001" if pd.notna(r["p_t"]) and r["p_t"] < 0.001 else (round(r["p_t"], 3) if pd.notna(r["p_t"]) else None),
+        "p (Wilcoxon)": "<0.001" if pd.notna(r["p_wilcoxon"]) and r["p_wilcoxon"] < 0.001 else (round(r["p_wilcoxon"], 3) if pd.notna(r["p_wilcoxon"]) else None),
+        "d": round(r["d"], 2) if pd.notna(r["d"]) else None,
+        "Conclusion": verdict(r),
+    })
+st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+st.divider()
+
+# ---------------- Descriptive comparison: RQ2 vs RQ1 ----------------
+st.markdown("## Comparison: Manual Process Weaknesses (RQ1) vs System Effectiveness (RQ2)")
+st.write(
+    "A paired t-test checks whether each respondent's average agreement differs between "
+    "**RQ1 (manual process weaknesses)** and **RQ2 (digital system effectiveness)**. These are two "
+    "different constructs, so a non-significant difference is **not** evidence against the system: "
+    "if respondents agree strongly that the manual process is weak *and* that the system is effective, "
+    "the two averages will be close. Use this as a descriptive comparison and rely on the "
+    "agreement tests above for the main conclusion."
 )
 rq1_scores = rq_means["RQ1 — Manual Process Weaknesses"]
 rq2_scores = rq_means["RQ2 — Digital System Effectiveness"]
 t_stat, p_value = paired_ttest(rq1_scores, rq2_scores)
 
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.metric("RQ1 Mean (Manual Weaknesses)", f"{rq1_scores.mean():.2f}")
 with col2:
     st.metric("RQ2 Mean (System Effectiveness)", f"{rq2_scores.mean():.2f}")
 with col3:
     st.metric("t-statistic", f"{t_stat:.3f}")
-
-st.metric("p-value", f"{p_value:.4f}")
+with col4:
+    st.metric("p-value", f"{p_value:.4f}")
 if p_value < 0.05:
-    st.success(
-        "The difference is statistically significant (p < 0.05) — respondents "
-        "rated the manual process's weaknesses and the digital system's "
-        "effectiveness as meaningfully different, supporting the case that "
-        "The system addresses the identified problems."
-    )
+    st.info("The two averages differ significantly (p < 0.05): respondents rated "
+            "the manual process's weaknesses and the system's effectiveness differently.")
 else:
-    st.warning(
-        "The difference is not statistically significant at the p < 0.05 "
-        "level with the current sample size — consider collecting more "
-        "responses before drawing strong conclusions."
-    )
+    st.info("The two averages are not significantly different (p ≥ 0.05): respondents rated "
+            "the manual process's weaknesses and the system's effectiveness similarly. "
+            "This is expected when both are rated highly, and does not count against the system.")
 
 st.divider()
 
