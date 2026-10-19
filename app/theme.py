@@ -7,6 +7,7 @@ import streamlit as st
 
 from app.db import execute
 from app.auth import delete_session
+from app.force_password import enforce
 
 ZIMRA_GREEN = "#4CAF50"
 ZIMRA_GREEN_DARK = "#3d8b40"
@@ -59,6 +60,7 @@ def inject_global_css():
 def render_sidebar(user: dict):
     """Logo + Account dropdown (profile, phone number, logout). Call on every page."""
     inject_global_css()
+    enforce(user)  # locks every page until a temporary password has been replaced
 
     with st.sidebar:
         st.image("app/assets/zimra_logo.png", width=140)
@@ -92,7 +94,7 @@ def render_sidebar(user: dict):
                     st.switch_page("app/main.py")
                 except Exception:
                     st.rerun()
-                
+
 
 def clear_form_keys(keys: list):
     """Delete specific session_state keys so their widgets reset to
