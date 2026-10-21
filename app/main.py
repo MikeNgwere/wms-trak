@@ -11,6 +11,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
+from app.password_reset_requests import create_request, pending_count, list_requests, mark_handled, STATUS_LABEL
 import streamlit.components.v1 as components
 
 from app.auth import (
@@ -190,46 +191,27 @@ def request_profile_screen():
 
 def forgot_password_screen():
     st.markdown("<h2 style='text-align:center;'>Forgot Password</h2>", unsafe_allow_html=True)
-
-    if "reset_verified_user_id" not in st.session_state:
-        st.session_state.reset_verified_user_id = None
-
-    if not st.session_state.reset_verified_user_id:
-        st.write("Enter your ZIMRA email to continue.")
+    if st.session_state.get("reset_request_sent"):
+        st.success("Your request has been sent to the Admin. Please check your email for the password reset link from the Admin.")
+        st.caption("Concept only in this pilot version: reset emails are not sent yet. If it is urgent, please contact your Admin directly.")
+    else:
+        st.write("Enter your ZIMRA email. We will confirm it and send a reset request to the Admin. "
+                 "You cannot reset a password from this page, so your account stays safe.")
         with st.form("verify_email_form"):
             email = st.text_input("ZIMRA Email (@zimra.co.zw)")
-            verify_submitted = st.form_submit_button("Verify Email", type="primary", use_container_width=True)
+            verify_submitted = st.form_submit_button("Send Reset Request", type="primary", use_container_width=True)
         if verify_submitted:
             if not is_valid_zimra_email(email):
                 st.error("Please enter a valid @zimra.co.zw email address.")
             else:
-                found = find_active_user_by_email(email)
-                if found:
-                    st.session_state.reset_verified_user_id = found["user_id"]
-                    st.session_state.reset_verified_name = found["full_name"]
-                    st.rerun()
-                else:
-                    st.error("No active account found with that email.")
-    else:
-        st.write(f"Account verified: **{st.session_state.reset_verified_name}**. Enter a new password below.")
-        st.caption(password_requirements_text())
-        with st.form("new_password_form"):
-            new_password = st.text_input("New Password", type="password")
-            confirm_password = st.text_input("Confirm New Password", type="password")
-            reset_submitted = st.form_submit_button("Reset Password", type="primary", use_container_width=True)
-        if reset_submitted:
-            if new_password != confirm_password:
-                st.error("Passwords do not match.")
-            elif not is_strong_password(new_password):
-                st.error(password_requirements_text())
-            else:
-                reset_password_self_service(st.session_state.reset_verified_user_id, new_password)
-                st.success("Password reset successfully. You can now sign in.")
-                st.session_state.reset_verified_user_id = None
-                st.session_state.auth_view = None
-
-    if st.button("← Back to Sign In"):
-        st.session_state.reset_verified_user_id = None
+                try:
+                    create_request(email)
+                except Exception:
+                    pass
+                st.session_state.reset_request_sent = True
+                st.rerun()
+    if st.button("\u2190 Back to Sign In"):
+        st.session_state.reset_request_sent = False
         st.session_state.auth_view = None
         st.rerun()
 
@@ -905,6 +887,39 @@ def admin_users_tab(user):
             st.rerun()
 
 
+def admin_password_resets_tab(user):
+    st.subheader("Password Reset Requests")
+    st.caption("Concept: when a user forgets a password, the system confirms the email and lands the request here. "
+               "In the full version, approving sends the user a one-time reset link by email. "
+               "In this pilot no email is sent and no password is changed from this tab. "
+               "To restore access now, use Users, then Reset Password.")
+    pending = list_requests("pending")
+    if not pending:
+        st.info("No pending requests.")
+    else:
+        labels = {f"{r['full_name']} ({r['email']}), {r['requested_at']:%d %b %Y %H:%M}": r["request_id"] for r in pending}
+        pick = st.selectbox("Pending request", list(labels), key="pwr_pick")
+        rid = labels[pick]
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("Send reset link (concept)", type="primary", key="pwr_send", use_container_width=True):
+                mark_handled(rid, user["user_id"], "link_sent")
+                st.success("Recorded as sent. In the full version the user would now receive a one-time reset link by email.")
+                st.rerun()
+        with c2:
+            if st.button("Dismiss", key="pwr_dismiss", use_container_width=True):
+                mark_handled(rid, user["user_id"], "dismissed")
+                st.rerun()
+    history = [r for r in list_requests() if r["status"] != "pending"]
+    if history:
+        st.markdown("#### Handled requests")
+        st.dataframe(
+            [{"User": r["full_name"], "Email": r["email"], "Requested": r["requested_at"],
+              "Status": STATUS_LABEL.get(r["status"], r["status"]), "Handled by": r["handled_by_name"],
+              "Handled at": r["handled_at"]} for r in history],
+            use_container_width=True, hide_index=True)
+
+
 def admin_entry_correction_tab(user):
     st.subheader("Entry Correction")
     query = st.text_input("Search by entry number or description")
@@ -1141,9 +1156,10 @@ def role_dashboard():
         names = ["Final Approvals", "Transfers", "Warehouse Overview", "Released & Sold", "Stocktake Reports"]
         fns = [manager_approvals_tab, transfers_tab, warehouse_overview_tab, released_sold_tab, stocktake_reports_tab]
     elif role == "Admin":
-        names = ["Profile Requests", "Users", "Entry Correction", "Audit Trail", "Messages",
+        _n = pending_count()
+        names = ["Profile Requests", "Users", f"Password Resets ({_n})" if _n else "Password Resets", "Entry Correction", "Audit Trail", "Messages",
                  "Statistics", "Warehouse Overview", "Transfers", "Stocktake", "Stocktake Reports"]
-        fns = [admin_profile_requests_tab, admin_users_tab, admin_entry_correction_tab, admin_audit_tab,
+        fns = [admin_profile_requests_tab, admin_users_tab, admin_password_resets_tab, admin_entry_correction_tab, admin_audit_tab,
                admin_messages_tab, admin_statistics_tab, warehouse_overview_tab, transfers_tab, stocktake_tab,
                stocktake_reports_tab]
     else:
