@@ -45,7 +45,8 @@ from app.action_requests import (
 from app.warehouses import warehouses_for_port, toggle_full, goods_in_warehouse
 from app.warehouse_views import rih_list, seizures_list, monthly_summary
 from app.revenue import released_and_sold, revenue_summary
-from app.db import fetch_all
+from app.db import fetch_all, execute
+from app.force_password import enforce
 
 st.set_page_config(page_title="Warehouse Management System", page_icon="🏛️", layout="wide")
 inject_global_css()
@@ -825,6 +826,7 @@ def admin_users_tab(user):
             else:
                 try:
                     create_user(full_name, username, plain_password, role_choices[role_pick], port_choices[port_pick])
+                    execute("UPDATE users SET must_change_password = TRUE WHERE LOWER(username) = LOWER(%s)", (username,))
                     st.success(f"User {username} created. Form cleared.")
                     clear_form_keys(["cu_full_name", "cu_username", "cu_password", "cu_role", "cu_port"])
                     st.rerun()
@@ -890,6 +892,7 @@ def admin_users_tab(user):
                 st.session_state.admin_user_feedback = ("error", password_requirements_text())
             else:
                 reset_password(chosen_id, new_pw)
+                execute("UPDATE users SET must_change_password = TRUE WHERE user_id = %s", (chosen_id,))
                 st.session_state.admin_user_feedback = ("success", f"Password reset for {detail['full_name']}.")
             st.rerun()
     with c3:
@@ -1118,6 +1121,7 @@ def dashboard_overview(user):
 
 def role_dashboard():
     user = st.session_state.user
+    enforce(user)  # locks the page until a temporary password has been replaced
     render_sidebar(user)
 
     st.title(f"{user['role_name']} Dashboard")
