@@ -28,9 +28,10 @@ st.markdown(
     "- **main** — your Dashboard\n"
     "- **Notifications** — system updates and chat-style messages\n"
     "- **About the Authors** — project information and the research group\n"
-    "- **Research Paper** — the research behind the system\n"
     "- **User Manual** — this page\n"
     "- **Pilot Test Results** — results of the pilot questionnaire\n"
+    "- **Questionnaire** — the pilot feedback form (see *Pilot Feedback Questionnaire* below)\n"
+    "- **Verify Document** — check that a printed document is genuine (click **View more** if it is hidden)\n"
     "- **Account dropdown** (bottom of sidebar) — your profile, phone number, and Log out"
 )
 st.write(
@@ -50,19 +51,54 @@ st.markdown(
     "- If the buttons do not all fit on your screen, scroll the bar sideways: use "
     "the mouse wheel while pointing at it, click and drag it, swipe on a "
     "touchscreen, or use the grey scroll bar beneath it.\n"
-    "- **Overview** is the first button. It shows entries whose bond/appeal "
-    "deadline is approaching or overdue, perishable goods nearing physical expiry, "
-    "and **Your Stocktake Rating**."
+    "- **Overview** is the first button. It shows RIH entries approaching or past their "
+    "60-day period (section 39), NOS entries approaching or past their three-month period "
+    "(section 193), perishable goods nearing physical expiry, and **Your Stocktake Rating**."
 )
 
 st.divider()
 
-st.markdown("## Logging In")
+st.markdown("## Logging In, Passwords and Getting an Account")
 st.write(
-    "Enter your username (usually your ZIMRA email) and password on the "
-    "sign-in screen. If your account is inactive or your details are wrong, "
-    "you'll see an error — contact an Admin user to check your account status "
-    "or reset your password."
+    "Sign in with your **ZIMRA email address** (it must end in @zimra.co.zw) and your password, then "
+    "press **SIGN IN**. If your account is inactive or your details are wrong you will see an "
+    "error: contact an Admin to check your account status."
+)
+
+st.markdown("### Your first sign-in: choose a new password")
+st.markdown(
+    "- Accounts are created with a **temporary password**. The first time you sign in (and again "
+    "after an Admin resets your password) the system shows **Choose a new password** and locks "
+    "every other page until you have changed it.\n"
+    "- Enter the new password twice. It cannot be the same as the temporary one, and it must meet "
+    "the strength rules shown on the screen (length and a mix of characters).\n"
+    "- Choose **Sign out** instead if you are not ready; nothing else can be opened until the "
+    "password is changed.\n"
+    "- Keep your password private. Never share it, even with an Admin: Admins can reset it but "
+    "never need to know it."
+)
+
+st.markdown("### Request a Profile (new users)")
+st.markdown(
+    "1. On the sign-in screen press **Request a Profile**.\n"
+    "2. Enter your full name, ZIMRA email, phone number, the role you need, your station, the "
+    "reason, and the password you would like to use. Only @zimra.co.zw addresses are accepted.\n"
+    "3. Press **Submit Request**. An Admin reviews it (usually within 24 hours) under **Profile "
+    "Requests**. Once approved you can sign in with the password you chose."
+)
+
+st.markdown("### Forgot Password")
+st.markdown(
+    "1. On the sign-in screen press **Forgot Password?** and enter your ZIMRA email.\n"
+    "2. The system confirms the address and sends a **reset request to the Admin**. You will see "
+    "*Your request has been sent to the Admin. Please check your email for the password reset "
+    "link from the Admin.*\n"
+    "3. The Admin handles the request under **Password Resets** (see the Admin guide below).\n"
+    "- Nobody can reset a password from the sign-in screen, so no one can take over another "
+    "person's account by knowing their email.\n"
+    "- **Pilot note:** in this pilot version the reset *email* is a concept and is not sent "
+    "automatically. If you are locked out, ask your Admin to reset your password; you will then "
+    "be asked to choose a new one at your next sign-in."
 )
 
 st.divider()
@@ -254,7 +290,13 @@ with st.expander("🛠️ Admin", expanded=(user["role_name"] == "Admin")):
         "- **Overview**: deadlines and perishable-expiry warnings.\n"
         "- **Profile Requests**: review requests for new profiles.\n"
         "- **Users**: create new accounts (Officer, Supervisor, Manager, Admin), "
-        "deactivate/reactivate accounts, reset passwords, or delete a user.\n"
+        "deactivate/reactivate accounts, reset passwords, or delete a user. New accounts and "
+        "reset passwords are temporary: the user must choose a new password at the next sign-in.\n"
+        "- **Password Resets**: forgotten-password requests land here, with a count of those "
+        "still pending on the tab. Press **Send reset link (concept)** to record that the link "
+        "was sent, or **Dismiss** if the request was not genuine. Handled requests stay listed "
+        "with who handled them and when. In this pilot no email is sent and no password is "
+        "changed from this tab: to restore access now, use **Users**, then **Reset Password**.\n"
         "- **Entry Correction**: search for an entry and fix mistakes (entry number, "
         "description, declared value) — every correction is logged with a reason.\n"
         "- **Audit Trail**: full history of every action taken in the system, plus a "
@@ -325,6 +367,24 @@ st.markdown(
 
 st.divider()
 
+st.markdown("## Pilot Feedback Questionnaire")
+st.write(
+    "The questionnaire collects your opinion of the system. It has 15 statements, scored from "
+    "1 (Strongly Disagree) to 5 (Strongly Agree), plus an optional comment box."
+)
+st.markdown(
+    "- **Logged in:** open **Questionnaire** in the sidebar. You can answer once and edit your "
+    "answers later.\n"
+    "- **Not logged in (guest page):** enter your name and ZIMRA email (one response per email), "
+    "or choose **Respond anonymously instead**. Anonymous answers store no name or email and "
+    "are used only in combined results.\n"
+    "- **Pilot Test Results** shows the combined results.\n"
+    "- Your name and email, if given, are used only for this research and to make sure each person "
+    "answers once."
+)
+
+st.divider()
+
 st.markdown("## Notifications")
 st.write(
     "Open **Notifications** from the sidebar. It has two tabs:"
@@ -355,4 +415,23 @@ st.markdown(
     "what actually effects the action** and removes the entry from active stock.\n"
     "6. The entry now appears in everyone's **Released & Sold** tab within their "
     "jurisdiction, contributing to revenue totals."
+)
+
+st.divider()
+
+st.markdown("## If Something Does Not Work")
+st.markdown(
+    "- **I cannot sign in:** check that you typed your full ZIMRA email and that Caps Lock is off. "
+    "If it still fails, ask the Admin to check that your account is active.\n"
+    "- **I forgot my password:** use **Forgot Password?** on the sign-in screen, or ask your Admin "
+    "directly (see *Logging In, Passwords and Getting an Account*).\n"
+    "- **The screen asks me to choose a new password:** this is expected on your first sign-in "
+    "or after a reset. Choose one and continue.\n"
+    "- **I cannot see a button or tab:** each role sees only its own screens. If the button bar "
+    "is cut off, scroll it sideways.\n"
+    "- **Transfers says my profile has no station:** ask the Admin to assign your station under "
+    "**Users**.\n"
+    "- **A printed document looks wrong:** scan its QR code or open **Verify Document**. If the "
+    "details do not match the paper, do not accept it and report it to your Admin.\n"
+    "- **The page looks out of date:** refresh your browser. You stay signed in on refresh."
 )
